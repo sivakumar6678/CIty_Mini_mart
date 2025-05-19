@@ -1,20 +1,18 @@
 // frontend/src/pages/OrdersPage.jsx (Customer's Order History)
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { AuthContext } from '../App';
 import { getCustomerOrders } from '../services/api';
+import OrderCard from '../components/OrderCard';
 
 function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [isVisible, setIsVisible] = useState(false);
     const { auth } = useContext(AuthContext);
 
     useEffect(() => {
-        // Add animation effect when component mounts
-        setIsVisible(true);
-        
         if (auth.isAuthenticated && auth.role === 'customer') {
             fetchOrders();
         } else {
@@ -54,8 +52,12 @@ function OrdersPage() {
         return (
             <div className="container mx-auto p-4 flex justify-center items-center min-h-[60vh]">
                 <div className="text-center">
-                    <div className="loading-spinner mb-4"></div>
-                    <p className="text-xl font-semibold text-primary">Loading your orders...</p>
+                    <motion.div 
+                        className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    <p className="text-xl font-semibold text-primary mt-4">Loading your orders...</p>
                 </div>
             </div>
         );
@@ -63,8 +65,18 @@ function OrdersPage() {
 
     if (error) {
         return (
-            <div className={`container mx-auto p-8 text-center transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-md max-w-2xl mx-auto">
+            <motion.div 
+                className="container mx-auto p-8 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <motion.div 
+                    className="bg-red-50 border-l-4 border-red-500 p-6 rounded-md max-w-2xl mx-auto"
+                    initial={{ y: 20 }}
+                    animate={{ y: 0 }}
+                    transition={{ delay: 0.2, type: 'spring' }}
+                >
                     <div className="flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 mr-4" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -75,113 +87,94 @@ function OrdersPage() {
                         </div>
                     </div>
                     <div className="mt-6">
-                        <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
-                            Return to Home
-                        </Link>
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
+                                Return to Home
+                            </Link>
+                        </motion.div>
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         );
     }
 
     if (orders.length === 0) {
         return (
-            <div className={`container mx-auto p-8 text-center transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                <div className="bg-white shadow-lg rounded-lg p-8 max-w-2xl mx-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
+            <motion.div 
+                className="container mx-auto p-8 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <motion.div 
+                    className="bg-white shadow-lg rounded-xl p-8 max-w-2xl mx-auto"
+                    initial={{ y: 20 }}
+                    animate={{ y: 0 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 24 }}
+                >
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.3, duration: 0.5 }}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </motion.div>
                     <h1 className="text-3xl font-bold mb-4 text-gray-800">No Orders Yet</h1>
                     <p className="text-xl text-gray-600 mb-8">You haven't placed any orders yet. Start shopping to see your orders here!</p>
-                    <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 inline-block">
-                        Start Shopping
-                    </Link>
-                </div>
-            </div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-lg transition-colors duration-200 inline-block">
+                            Start Shopping
+                        </Link>
+                    </motion.div>
+                </motion.div>
+            </motion.div>
         );
     }
 
     return (
-        <div className={`container mx-auto p-6 transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">My Orders</h1>
-                <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">
-                    Continue Shopping
-                </Link>
+        <motion.div 
+            className="container mx-auto p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+        >
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                <motion.h1 
+                    className="text-3xl font-bold text-gray-800 mb-4 md:mb-0"
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    My Orders
+                </motion.h1>
+                <motion.div
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                    <Link to="/" className="bg-primary hover:bg-primary-dark text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm inline-flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                        </svg>
+                        Continue Shopping
+                    </Link>
+                </motion.div>
             </div>
             
             <div className="space-y-8">
                 {orders.map((order, index) => (
-                    <div 
-                        key={order.id} 
-                        className={`bg-white shadow-lg rounded-lg overflow-hidden transition-all duration-500 delay-${index * 100} ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-                    >
-                        <div className="bg-gradient-to-r from-primary to-primary-dark text-white p-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                                <div>
-                                    <h2 className="text-xl font-bold">Order #{order.id}</h2>
-                                    <p className="text-white text-opacity-80 text-sm">Placed on: {formatDate(order.created_at)}</p>
-                                </div>
-                                <div className="mt-2 sm:mt-0">
-                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                        order.status === 'Shipped' ? 'bg-blue-100 text-blue-800' :
-                                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {order.status}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">Order Items</h3>
-                            
-                            {order.items && order.items.length > 0 ? (
-                                <div className="space-y-4">
-                                    {order.items.map(item => (
-                                        <div key={item.product_id} className="flex justify-between items-center border-b border-gray-100 pb-3">
-                                            <div className="flex items-center">
-                                                <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center mr-4">
-                                                    {item.image_url ? (
-                                                        <img 
-                                                            src={item.image_url} 
-                                                            alt={item.name} 
-                                                            className="w-10 h-10 object-cover rounded"
-                                                            onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/100x100/E2E8F0/A0AEC0?text=${item.name.charAt(0)}`; }}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-gray-500 font-bold">{item.name.charAt(0)}</span>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-medium text-gray-800">{item.name}</h4>
-                                                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-semibold text-gray-800">{formatCurrency(item.price * item.quantity)}</p>
-                                                <p className="text-xs text-gray-500">{formatCurrency(item.price)} each</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-gray-500 italic">Item details not available for this order.</p>
-                            )}
-                            
-                            <div className="mt-6 pt-4 border-t border-gray-200">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-lg font-bold text-gray-700">Total Amount:</span>
-                                    <span className="text-xl font-bold text-primary">{formatCurrency(order.total_amount)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <OrderCard 
+                        key={order.id}
+                        order={order}
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                        index={index}
+                    />
                 ))}
             </div>
-        </div>
+        </motion.div>
     );
 }
 

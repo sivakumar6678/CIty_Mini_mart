@@ -464,6 +464,45 @@ def get_shop_orders():
         
     return jsonify(result), 200
 
+@app.route('/api/orders/<int:order_id>/status', methods=['PUT'])
+@admin_required
+def update_order_status(order_id):
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    if not new_status:
+        return jsonify(message="New status is required"), 400
+        
+    # Validate status value
+    valid_statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+    if new_status not in valid_statuses:
+        return jsonify(message=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"), 400
+    
+    # Get current user's shop
+    current_user_email = get_jwt_identity()
+    owner = User.query.filter_by(email=current_user_email).first()
+    shop = Shop.query.filter_by(owner_id=owner.id).first()
+    
+    if not shop:
+        return jsonify(message="Admin does not have a shop."), 403
+    
+    # Check if order exists and contains items from this shop
+    order_has_shop_items = db.session.query(order_items).\
+        filter(order_items.c.order_id == order_id, order_items.c.shop_id == shop.id).first()
+    
+    if not order_has_shop_items:
+        return jsonify(message="Order not found or does not contain items from your shop"), 404
+    
+    # Update order status
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify(message="Order not found"), 404
+        
+    order.status = new_status
+    db.session.commit()
+    
+    return jsonify(message=f"Order status updated to {new_status}", order_id=order_id, status=new_status), 200
+
 
 # --- Main Execution ---
 if __name__ == '__main__':
