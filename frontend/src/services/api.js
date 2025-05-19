@@ -54,5 +54,8 @@ export const getCustomerOrders = () => apiClient.get('/orders/customer');
 export const getShopOrders = () => apiClient.get('/orders/shop'); // Admin getting orders for their shop
 export const updateOrderStatus = (orderId, status) => apiClient.put(`/orders/${orderId}/status`, { status });
 
+// --- Analytics ---
+export const getShopAnalytics = (days = 30) => apiClient.get(`/admin/analytics?days=${days}`);
+
 export default apiClient;
     

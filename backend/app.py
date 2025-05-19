@@ -503,6 +503,145 @@ def update_order_status(order_id):
     
     return jsonify(message=f"Order status updated to {new_status}", order_id=order_id, status=new_status), 200
 
+@app.route('/api/admin/analytics', methods=['GET'])
+@admin_required
+def get_shop_analytics():
+    """
+    Get analytics data for the admin's shop
+    Returns:
+        - Total sales
+        - Total orders
+        - Active customers
+        - Average order value
+        - Revenue data (daily/weekly)
+        - Order status breakdown
+        - Top selling products
+    """
+    current_user_email = get_jwt_identity()
+    owner = User.query.filter_by(email=current_user_email).first()
+    shop = Shop.query.filter_by(owner_id=owner.id).first()
+    
+    if not shop:
+        return jsonify(message="Admin does not have a shop."), 404
+    
+    # Get time range from query parameters (default to last 30 days)
+    days = request.args.get('days', 30, type=int)
+    start_date = datetime.utcnow() - timedelta(days=days)
+    
+    # Find orders that contain products from this shop
+    order_ids_with_shop_items = db.session.query(order_items.c.order_id).\
+        filter(order_items.c.shop_id == shop.id).distinct().all()
+    
+    if not order_ids_with_shop_items:
+        # Return empty analytics if no orders
+        return jsonify({
+            'totalSales': 0,
+            'totalOrders': 0,
+            'activeCustomers': 0,
+            'averageOrderValue': 0,
+            'revenueData': [],
+            'orderStatusData': {},
+            'topProducts': []
+        }), 200
+    
+    actual_order_ids = [oid[0] for oid in order_ids_with_shop_items]
+    
+    # Get orders within the time range
+    orders = Order.query.filter(
+        Order.id.in_(actual_order_ids),
+        Order.created_at >= start_date
+    ).order_by(Order.created_at.desc()).all()
+    
+    # Calculate total sales for this shop
+    total_sales = 0
+    order_values = []
+    customer_ids = set()
+    order_status_counts = {
+        'Pending': 0,
+        'Processing': 0,
+        'Shipped': 0,
+        'Delivered': 0,
+        'Cancelled': 0
+    }
+    
+    # Group revenue by date
+    revenue_by_date = {}
+    
+    for order in orders:
+        # Get items for this shop in this order
+        items_for_shop = db.session.query(Product, order_items.c.quantity).\
+            join(order_items, Product.id == order_items.c.product_id).\
+            filter(order_items.c.order_id == order.id, order_items.c.shop_id == shop.id).all()
+        
+        # Calculate shop-specific total for this order
+        shop_specific_total = sum(product.price * quantity for product, quantity in items_for_shop)
+        
+        # Add to total sales
+        total_sales += shop_specific_total
+        
+        # Add to order values for average calculation
+        if shop_specific_total > 0:
+            order_values.append(shop_specific_total)
+        
+        # Add customer to unique customers set
+        customer_ids.add(order.customer_id)
+        
+        # Count order status
+        if order.status in order_status_counts:
+            order_status_counts[order.status] += 1
+        
+        # Add to revenue by date
+        order_date = order.created_at.date().isoformat()
+        if order_date in revenue_by_date:
+            revenue_by_date[order_date] += shop_specific_total
+        else:
+            revenue_by_date[order_date] = shop_specific_total
+    
+    # Calculate average order value
+    avg_order_value = sum(order_values) / len(order_values) if order_values else 0
+    
+    # Format revenue data for chart
+    revenue_data = [{'date': date, 'revenue': revenue} for date, revenue in revenue_by_date.items()]
+    revenue_data.sort(key=lambda x: x['date'])  # Sort by date
+    
+    # Get top selling products
+    top_products_query = db.session.query(
+        Product,
+        db.func.sum(order_items.c.quantity).label('total_quantity'),
+        db.func.sum(Product.price * order_items.c.quantity).label('total_revenue')
+    ).\
+    join(order_items, Product.id == order_items.c.product_id).\
+    filter(
+        order_items.c.shop_id == shop.id,
+        order_items.c.order_id.in_(actual_order_ids)
+    ).\
+    group_by(Product.id).\
+    order_by(db.text('total_quantity DESC')).\
+    limit(5).all()
+    
+    top_products = [
+        {
+            'id': product.id,
+            'name': product.name,
+            'sales': int(total_quantity),
+            'revenue': float(total_revenue)
+        }
+        for product, total_quantity, total_revenue in top_products_query
+    ]
+    
+    # Prepare response
+    analytics_data = {
+        'totalSales': float(total_sales),
+        'totalOrders': len(orders),
+        'activeCustomers': len(customer_ids),
+        'averageOrderValue': float(avg_order_value),
+        'revenueData': revenue_data,
+        'orderStatusData': order_status_counts,
+        'topProducts': top_products
+    }
+    
+    return jsonify(analytics_data), 200
+
 
 # --- Main Execution ---
 if __name__ == '__main__':
