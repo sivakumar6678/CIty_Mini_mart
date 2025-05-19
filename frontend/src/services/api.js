@@ -27,6 +27,7 @@ export const loginUser = (credentials) => apiClient.post('/auth/login', credenti
 export const getMe = async () => { // No token argument needed due to interceptor
     try {
         const response = await apiClient.get('/auth/me');
+        console.log("User profile data:", response.data);
         return response.data;
     } catch (error) {
         console.error("Error fetching user profile:", error.response ? error.response.data : error.message);

@@ -35,7 +35,9 @@ function App() {
         if (token && !auth.role) { // If token exists but context not fully populated, try to fetch user data
             const fetchUser = async () => {
                 try {
-                    const userData = await getMe(token); // You'll need to implement getMe in api.js
+                    console.log("Fetching user data with token:", token);
+                    const userData = await getMe(); // No need to pass token, interceptor will handle it
+                    console.log("User data fetched:", userData);
                     if (userData) {
                        setAuth({
                            token: token,
@@ -45,7 +47,9 @@ function App() {
                            isAuthenticated: true,
                            userId: userData.id,
                        });
+                       console.log("Auth state updated with user data");
                     } else { // Token might be invalid or expired
+                        console.log("No user data returned, logging out");
                         handleLogout();
                     }
                 } catch (error) {
@@ -57,6 +61,7 @@ function App() {
             };
             fetchUser();
         } else {
+            console.log("No token or auth already populated, skipping fetch");
             setIsLoading(false);
         }
     }, []);
@@ -97,10 +102,11 @@ function App() {
     
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="text-center">
-                    <div className="loading-spinner mb-4"></div>
-                    <p className="text-xl font-semibold text-primary-color">Loading Mini Mart...</p>
+            <div className="flex justify-center items-center h-screen bg-gray-50">
+                <div className="text-center p-8 bg-white rounded-lg shadow-lg">
+                    <div className="loading-spinner mb-4 mx-auto"></div>
+                    <p className="text-xl font-semibold text-primary">Loading Mini Mart...</p>
+                    <p className="text-sm text-gray-500 mt-2">Please wait while we prepare your experience</p>
                 </div>
             </div>
         );
@@ -152,6 +158,42 @@ function App() {
                 </div>
             </Router>
         </AuthContext.Provider>
+    );
+}
+
+// Footer component
+const Footer = () => {
+    return (
+        <footer className="bg-gray-800 text-white py-6">
+            <div className="container mx-auto px-4">
+                <div className="flex flex-col md:flex-row justify-between items-center">
+                    <div className="mb-4 md:mb-0">
+                        <h3 className="text-xl font-bold mb-2">Mini Mart</h3>
+                        <p className="text-gray-400">Connecting local shops with customers</p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8">
+                        <div>
+                            <h4 className="text-lg font-semibold mb-3">Quick Links</h4>
+                            <ul className="space-y-2">
+                                <li><Link to="/" className="text-gray-400 hover:text-white transition">Home</Link></li>
+                                <li><Link to="/login" className="text-gray-400 hover:text-white transition">Login</Link></li>
+                                <li><Link to="/register" className="text-gray-400 hover:text-white transition">Register</Link></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-lg font-semibold mb-3">Contact</h4>
+                            <ul className="space-y-2">
+                                <li className="text-gray-400">Email: support@minimart.com</li>
+                                <li className="text-gray-400">Phone: +91 1234567890</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div className="border-t border-gray-700 mt-6 pt-6 text-center text-gray-400">
+                    <p>&copy; {new Date().getFullYear()} Mini Mart. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
     );
 }
 
@@ -265,45 +307,6 @@ const Navbar = () => {
                 </div>
             </div>
         </nav>
-    );
-};
-
-// Add a simple Footer component
-const Footer = () => {
-    return (
-        <footer className="bg-gray-800 text-white py-6">
-            <div className="container mx-auto px-4">
-                <div className="flex flex-col md:flex-row justify-between items-center">
-                    <div className="mb-4 md:mb-0">
-                        <h3 className="text-xl font-bold mb-2">Mini Mart</h3>
-                        <p className="text-gray-400 text-sm">Your neighborhood marketplace</p>
-                    </div>
-                    
-                    <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-                        <div>
-                            <h4 className="font-semibold mb-2">Quick Links</h4>
-                            <ul className="text-sm text-gray-400">
-                                <li className="mb-1"><Link to="/" className="hover:text-white">Home</Link></li>
-                                <li className="mb-1"><Link to="/products/city/all" className="hover:text-white">Products</Link></li>
-                                <li className="mb-1"><Link to="/cart" className="hover:text-white">Cart</Link></li>
-                            </ul>
-                        </div>
-                        
-                        <div>
-                            <h4 className="font-semibold mb-2">Contact</h4>
-                            <ul className="text-sm text-gray-400">
-                                <li className="mb-1">Email: support@minimart.com</li>
-                                <li className="mb-1">Phone: +91 1234567890</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="border-t border-gray-700 mt-6 pt-6 text-center text-sm text-gray-500">
-                    <p>&copy; {new Date().getFullYear()} Mini Mart. All rights reserved.</p>
-                </div>
-            </div>
-        </footer>
     );
 };
 

@@ -8,7 +8,7 @@
 
 /* Navbar styles */
 .navbar {
-  @apply bg-primary;
+  background-color: var(--primary-color);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   position: fixed;
   top: 0;
@@ -36,7 +36,7 @@
 }
 
 .navbar-brand:hover {
-  @apply text-primary-light;
+  color: var(--primary-light);
 }
 
 .navbar-links {
@@ -53,7 +53,7 @@
 }
 
 .navbar-link:hover {
-  @apply text-primary-light;
+  color: var(--primary-light);
 }
 
 .navbar-link::after {
@@ -80,7 +80,8 @@
 }
 
 .navbar-button {
-  @apply bg-danger text-white;
+  background-color: var(--danger);
+  color: white;
   border: none;
   padding: 0.4rem 0.8rem;
   border-radius: 0.25rem;
