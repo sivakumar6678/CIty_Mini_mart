@@ -25,8 +25,30 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
 # --- Extensions ---
 db = SQLAlchemy(app)
-CORS(app) # Enable CORS for all routes and origins by default
+# Configure CORS with explicit settings
+CORS(app, resources={r"/api/*": {"origins": "*", "supports_credentials": True, "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]}})
 jwt = JWTManager(app)
+
+# JWT error handlers
+@jwt.unauthorized_loader
+def unauthorized_callback(callback):
+    response = jsonify({
+        'message': 'Missing Authorization Header',
+        'error': 'authorization_required'
+    })
+    response.status_code = 401
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+@jwt.invalid_token_loader
+def invalid_token_callback(callback):
+    response = jsonify({
+        'message': 'Invalid or expired token',
+        'error': 'invalid_token'
+    })
+    response.status_code = 401
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 # --- Database Models ---
 class User(db.Model):
@@ -219,6 +241,13 @@ def add_product():
     name = data.get('name')
     price = data.get('price')
     image_url = data.get('image_url', '') # Optional image_url
+    
+    # Get additional fields but don't use them in the model yet
+    category = data.get('category', 'Vegetables')  # Default to vegetables
+    discount_percentage = data.get('discount_percentage', 0)
+    featured = data.get('featured', False)
+    unit = data.get('unit', 'kg')  # Default unit for produce
+    description = data.get('description', 'Fresh and locally sourced')
 
     current_user_email = get_jwt_identity()
     owner = User.query.filter_by(email=current_user_email).first()
@@ -237,10 +266,53 @@ def add_product():
     except ValueError:
         return jsonify(message="Invalid price format"), 400
 
-    new_product = Product(name=name, price=price, image_url=image_url, shop_id=shop.id)
+    # Create product with only the columns that exist in the database
+    new_product = Product(
+        name=name, 
+        price=price, 
+        image_url=image_url, 
+        shop_id=shop.id
+    )
+    
+    # Try to set additional attributes if they exist in the model
+    try:
+        if hasattr(new_product, 'category'):
+            new_product.category = category
+        if hasattr(new_product, 'discount_percentage'):
+            new_product.discount_percentage = float(discount_percentage)
+        if hasattr(new_product, 'featured'):
+            new_product.featured = featured
+        if hasattr(new_product, 'unit'):
+            new_product.unit = unit
+        if hasattr(new_product, 'description'):
+            new_product.description = description
+    except Exception as e:
+        print(f"Error setting product attributes: {e}")
+    
     db.session.add(new_product)
     db.session.commit()
-    return jsonify(message="Product added successfully", product_id=new_product.id), 201
+    
+    # Return the created product with default values for missing columns
+    product_data = {
+        'id': new_product.id,
+        'name': new_product.name,
+        'price': new_product.price,
+        'image_url': new_product.image_url,
+        'shop_id': new_product.shop_id,
+        'shop_name': shop.name,
+        'category': category,
+        'discount_percentage': discount_percentage,
+        'featured': featured,
+        'unit': unit,
+        'description': description,
+        'sold_count': 0
+    }
+    
+    return jsonify({
+        'message': "Product added successfully",
+        'product_id': new_product.id,
+        'product': product_data
+    }), 201
 
 @app.route('/api/products/<int:product_id>', methods=['PUT'])
 @admin_required
@@ -257,6 +329,7 @@ def update_product(product_id):
     if not product:
         return jsonify(message="Product not found or does not belong to this shop"), 404
 
+    # Update basic fields that are guaranteed to exist
     if 'name' in data:
         product.name = data['name']
     if 'price' in data:
@@ -269,8 +342,69 @@ def update_product(product_id):
     if 'image_url' in data:
         product.image_url = data['image_url']
     
+    # Try to update additional fields if they exist in the model
+    category = data.get('category', 'Vegetables')
+    discount_percentage = data.get('discount_percentage', 0)
+    featured = data.get('featured', False)
+    unit = data.get('unit', 'kg')
+    description = data.get('description', '')
+    
+    try:
+        # Update new fields if they exist in the model
+        if 'category' in data and hasattr(product, 'category'):
+            product.category = data['category']
+        if 'discount_percentage' in data and hasattr(product, 'discount_percentage'):
+            try:
+                discount = float(data['discount_percentage'])
+                if discount < 0 or discount > 100: raise ValueError
+                product.discount_percentage = discount
+            except ValueError:
+                return jsonify(message="Invalid discount percentage"), 400
+        if 'featured' in data and hasattr(product, 'featured'):
+            product.featured = bool(data['featured'])
+        if 'unit' in data and hasattr(product, 'unit'):
+            product.unit = data['unit']
+        if 'description' in data and hasattr(product, 'description'):
+            product.description = data['description']
+    except Exception as e:
+        print(f"Error updating product attributes: {e}")
+    
     db.session.commit()
-    return jsonify(message="Product updated successfully"), 200
+    
+    # Return the updated product with default values for missing columns
+    product_data = {
+        'id': product.id,
+        'name': product.name,
+        'price': product.price,
+        'image_url': product.image_url,
+        'shop_id': product.shop_id,
+        'shop_name': product.shop.name,
+        'category': category,
+        'discount_percentage': discount_percentage,
+        'featured': featured,
+        'unit': unit,
+        'description': description,
+        'sold_count': 0
+    }
+    
+    # Try to get actual values if attributes exist
+    try:
+        if hasattr(product, 'category'):
+            product_data['category'] = product.category
+        if hasattr(product, 'discount_percentage'):
+            product_data['discount_percentage'] = product.discount_percentage
+        if hasattr(product, 'featured'):
+            product_data['featured'] = product.featured
+        if hasattr(product, 'unit'):
+            product_data['unit'] = product.unit
+        if hasattr(product, 'description'):
+            product_data['description'] = product.description
+        if hasattr(product, 'sold_count'):
+            product_data['sold_count'] = product.sold_count
+    except Exception as e:
+        print(f"Error accessing product attributes: {e}")
+    
+    return jsonify(product_data), 200
 
 @app.route('/api/products/<int:product_id>', methods=['DELETE'])
 @admin_required
@@ -292,23 +426,104 @@ def delete_product(product_id):
 
 
 @app.route('/api/shops/<int:shop_id>/products', methods=['GET'])
-@jwt_required() # Any logged in user can see products of a shop
 def get_products_by_shop(shop_id):
     shop = Shop.query.get(shop_id)
     if not shop:
         return jsonify(message="Shop not found"), 404
     
     products = Product.query.filter_by(shop_id=shop_id).all()
-    return jsonify([{
-        'id': p.id, 
-        'name': p.name, 
-        'price': p.price, 
-        'image_url': p.image_url,
-        'shop_id': p.shop_id
-        } for p in products]), 200
+    
+    result = []
+    for p in products:
+        product_data = {
+            'id': p.id, 
+            'name': p.name, 
+            'price': p.price, 
+            'image_url': p.image_url,
+            'shop_id': p.shop_id,
+            'shop_name': shop.name,
+            'city': shop.city,
+            'category': 'Vegetables',  # Default category
+            'discount_percentage': 0,  # Default discount
+            'featured': False,  # Default featured status
+            'unit': 'kg',  # Default unit for produce
+            'description': 'Fresh and locally sourced',  # Default description
+            'sold_count': 0  # Default sold count
+        }
+        
+        # Try to access attributes that might not exist in the database
+        try:
+            if hasattr(p, 'category') and p.category:
+                product_data['category'] = p.category
+            if hasattr(p, 'discount_percentage') and p.discount_percentage is not None:
+                product_data['discount_percentage'] = p.discount_percentage
+            if hasattr(p, 'featured') and p.featured is not None:
+                product_data['featured'] = p.featured
+            if hasattr(p, 'unit') and p.unit:
+                product_data['unit'] = p.unit
+            if hasattr(p, 'description') and p.description:
+                product_data['description'] = p.description
+            if hasattr(p, 'sold_count') and p.sold_count is not None:
+                product_data['sold_count'] = p.sold_count
+        except Exception as e:
+            print(f"Error accessing product attributes: {e}")
+            
+        result.append(product_data)
+    
+    return jsonify(result), 200
+
+@app.route('/api/products', methods=['GET'])
+def get_all_products():
+    """Get all products with shop information - public endpoint, no auth required"""
+    products = Product.query.all()
+    
+    if not products:
+        return jsonify(message="No products found"), 404
+    
+    # Get shop information for each product
+    result = []
+    for p in products:
+        shop = Shop.query.get(p.shop_id)
+        
+        # Add default values for columns that might not exist in the database
+        product_data = {
+            'id': p.id,
+            'name': p.name,
+            'price': p.price,
+            'image_url': p.image_url,
+            'shop_id': p.shop_id,
+            'shop_name': shop.name,
+            'city': shop.city,
+            'category': 'Vegetables',  # Default category
+            'discount_percentage': 0,  # Default discount
+            'featured': False,  # Default featured status
+            'unit': 'kg',  # Default unit for produce
+            'description': 'Fresh and locally sourced',  # Default description
+            'sold_count': 0  # Default sold count
+        }
+        
+        # Try to access attributes that might not exist in the database
+        try:
+            if hasattr(p, 'category') and p.category:
+                product_data['category'] = p.category
+            if hasattr(p, 'discount_percentage') and p.discount_percentage is not None:
+                product_data['discount_percentage'] = p.discount_percentage
+            if hasattr(p, 'featured') and p.featured is not None:
+                product_data['featured'] = p.featured
+            if hasattr(p, 'unit') and p.unit:
+                product_data['unit'] = p.unit
+            if hasattr(p, 'description') and p.description:
+                product_data['description'] = p.description
+            if hasattr(p, 'sold_count') and p.sold_count is not None:
+                product_data['sold_count'] = p.sold_count
+        except Exception as e:
+            print(f"Error accessing product attributes: {e}")
+            
+        result.append(product_data)
+    
+    return jsonify(result), 200
 
 @app.route('/api/products/city/<city_name>', methods=['GET'])
-@jwt_required()
 def get_products_by_city(city_name):
     # Find shops in the city
     shops_in_city = Shop.query.filter(Shop.city.ilike(f"%{city_name}%")).all()
@@ -321,14 +536,44 @@ def get_products_by_city(city_name):
     if not products:
         return jsonify(message=f"No products found in {city_name}"), 404
 
-    return jsonify([{
-        'id': p.id, 
-        'name': p.name, 
-        'price': p.price, 
-        'image_url': p.image_url,
-        'shop_id': p.shop_id,
-        'shop_name': p.shop.name # Include shop name
-        } for p in products]), 200
+    result = []
+    for p in products:
+        product_data = {
+            'id': p.id, 
+            'name': p.name, 
+            'price': p.price, 
+            'image_url': p.image_url,
+            'shop_id': p.shop_id,
+            'shop_name': p.shop.name,
+            'city': p.shop.city,
+            'category': 'Vegetables',  # Default category
+            'discount_percentage': 0,  # Default discount
+            'featured': False,  # Default featured status
+            'unit': 'kg',  # Default unit for produce
+            'description': 'Fresh and locally sourced',  # Default description
+            'sold_count': 0  # Default sold count
+        }
+        
+        # Try to access attributes that might not exist in the database
+        try:
+            if hasattr(p, 'category') and p.category:
+                product_data['category'] = p.category
+            if hasattr(p, 'discount_percentage') and p.discount_percentage is not None:
+                product_data['discount_percentage'] = p.discount_percentage
+            if hasattr(p, 'featured') and p.featured is not None:
+                product_data['featured'] = p.featured
+            if hasattr(p, 'unit') and p.unit:
+                product_data['unit'] = p.unit
+            if hasattr(p, 'description') and p.description:
+                product_data['description'] = p.description
+            if hasattr(p, 'sold_count') and p.sold_count is not None:
+                product_data['sold_count'] = p.sold_count
+        except Exception as e:
+            print(f"Error accessing product attributes: {e}")
+            
+        result.append(product_data)
+    
+    return jsonify(result), 200
 
 
 # --- Order Routes ---
@@ -643,9 +888,38 @@ def get_shop_analytics():
     return jsonify(analytics_data), 200
 
 
+# --- Error Handlers ---
+@app.errorhandler(500)
+def handle_500_error(e):
+    response = jsonify({"message": "Internal server error", "error": str(e)})
+    response.status_code = 500
+    # Add CORS headers to error responses
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+@app.errorhandler(404)
+def handle_404_error(e):
+    response = jsonify({"message": "Resource not found", "error": str(e)})
+    response.status_code = 404
+    # Add CORS headers to error responses
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+@app.after_request
+def after_request(response):
+    # Add CORS headers to all responses
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 # --- Main Execution ---
 if __name__ == '__main__':
     with app.app_context():
         db.create_all() # Create database tables if they don't exist
-    app.run(debug=True, host='0.0.0.0', port=5001) # Run on port 5001 to avoid conflict with React dev server
+    app.run(debug=True, host='0.0.0.0', port=5000) # Run on port 5000
     

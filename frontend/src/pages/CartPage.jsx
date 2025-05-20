@@ -23,6 +23,9 @@ function CartPage() {
 
     useEffect(() => {
         localStorage.setItem('cart', JSON.stringify(cart));
+        
+        // Dispatch custom event to notify other components (like Header) about cart updates
+        window.dispatchEvent(new Event('cartUpdated'));
     }, [cart]);
 
     const updateQuantity = (productId, newQuantity) => {

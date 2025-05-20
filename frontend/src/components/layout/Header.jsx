@@ -11,12 +11,30 @@ const Header = ({ isScrolled, toggleSidebar, isAdmin = false, pageTitle = '' }) 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
 
-  // Simulate cart count (in a real app, this would come from a cart context or API)
+  // Get cart count from localStorage
   useEffect(() => {
-    if (auth.isAuthenticated && auth.role === 'customer') {
-      // This is just a placeholder. In a real app, you'd fetch the actual cart count
-      setCartCount(Math.floor(Math.random() * 5));
-    }
+    const updateCartCount = () => {
+      if (auth.isAuthenticated && auth.role === 'customer') {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        setCartCount(cart.length);
+      } else {
+        setCartCount(0);
+      }
+    };
+
+    // Initial count
+    updateCartCount();
+
+    // Listen for storage events to update cart count when it changes
+    window.addEventListener('storage', updateCartCount);
+    
+    // Custom event for cart updates within the same window
+    window.addEventListener('cartUpdated', updateCartCount);
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      window.removeEventListener('cartUpdated', updateCartCount);
+    };
   }, [auth.isAuthenticated, auth.role]);
 
   const onLogout = () => {
@@ -403,6 +421,19 @@ const Header = ({ isScrolled, toggleSidebar, isAdmin = false, pageTitle = '' }) 
                     <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
                   </svg>
                   Admin Dashboard
+                </Link>
+              )}
+              
+              {auth.isAuthenticated && (
+                <Link 
+                  to="/settings" 
+                  className="block py-2 text-gray-700 hover:text-primary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                  </svg>
+                  Settings
                 </Link>
               )}
             </nav>

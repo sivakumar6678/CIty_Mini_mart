@@ -14,12 +14,15 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import HomePage from './pages/HomePage';
+import LandingPage from './pages/LandingPage';
 import ProductsPage from './pages/ProductsPage';
 import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage'; // Customer orders
 import ShopOrdersPage from './pages/ShopOrdersPage'; // Admin shop orders
 import CreateShopPage from './pages/CreateShopPage'; // Admin create shop
 import AddProductPage from './pages/AddProductPage'; // Admin add product
+import ManageOffersPage from './pages/ManageOffersPage'; // Admin manage offers
+import SettingsPage from './pages/SettingsPage'; // User settings
 
 // Services
 import { getMe } from './services/api';
@@ -135,8 +138,13 @@ function App() {
                         
                         {/* Main Layout Routes */}
                         <Route element={<MainLayout />}>
-                            <Route path="/" element={<HomePage />} />
+                            <Route path="/" element={<LandingPage />} />
+                            <Route path="/home" element={<HomePage />} />
                             <Route path="/products/city/:cityName" element={<ProductsPage />} />
+                            <Route path="/products/category/:categoryName" element={<ProductsPage />} />
+                            <Route path="/products/offers" element={<ProductsPage filter="offers" />} />
+                            <Route path="/products/popular" element={<ProductsPage filter="popular" />} />
+                            <Route path="/products" element={<ProductsPage />} />
                             
                             {/* Customer Routes */}
                             <Route path="/customer/dashboard" element={
@@ -147,6 +155,9 @@ function App() {
                             } />
                             <Route path="/orders" element={
                                 auth.isAuthenticated && auth.role === 'customer' ? <OrdersPage /> : <Navigate to="/login" />
+                            } />
+                            <Route path="/settings" element={
+                                auth.isAuthenticated ? <SettingsPage /> : <Navigate to="/login" />
                             } />
                         </Route>
                         
@@ -166,6 +177,9 @@ function App() {
                             } />
                             <Route path="/admin/shop-orders" element={
                                 auth.isAuthenticated && auth.role === 'admin' ? <ShopOrdersPage /> : <Navigate to="/login" />
+                            } />
+                            <Route path="/admin/manage-offers" element={
+                                auth.isAuthenticated && auth.role === 'admin' ? <ManageOffersPage /> : <Navigate to="/login" />
                             } />
                         </Route>
 

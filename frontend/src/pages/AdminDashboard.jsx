@@ -118,9 +118,14 @@ function AdminDashboard() {
                 <>
                     <div className="mb-8">
                         <h2 className="text-2xl font-semibold mb-4 text-gray-700">Manage Products</h2>
-                        <Link to="/admin/add-product" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4 inline-block">
-                            + Add New Product
-                        </Link>
+                        <div className="flex flex-wrap gap-3 mb-4">
+                            <Link to="/admin/add-product" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-block">
+                                + Add New Product
+                            </Link>
+                            <Link to="/admin/manage-offers" className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded inline-block">
+                                Manage Offers
+                            </Link>
+                        </div>
                         {loadingProducts && <p>Loading products...</p>}
                         {!loadingProducts && products.length === 0 && <p className="text-gray-500">You have no products yet. Add some!</p>}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -9,25 +9,34 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#10b981', // Same as var(--primary-color)
-          dark: '#047857',    // Same as var(--primary-dark)
-          light: '#d1fae5',   // Same as var(--primary-light)
+          DEFAULT: '#3b82f6', // Blue-500 - Changed from green to blue
+          dark: '#2563eb',    // Blue-600
+          light: '#dbeafe',   // Blue-100
         },
         secondary: {
-          DEFAULT: '#f59e0b', // Same as var(--secondary-color)
+          DEFAULT: '#8b5cf6', // Purple-500
+          dark: '#7c3aed',    // Purple-600
+          light: '#ede9fe',   // Purple-100
+        },
+        accent: {
+          DEFAULT: '#f97316', // Orange-500
+          dark: '#ea580c',    // Orange-600
+          light: '#ffedd5',   // Orange-100
         },
         text: {
-          dark: '#1f2937',    // Same as var(--text-dark)
-          light: '#f9fafb',   // Same as var(--text-light)
+          dark: '#1e293b',    // Slate-800
+          light: '#f8fafc',   // Slate-50
+          muted: '#64748b',   // Slate-500
         },
         background: {
-          light: '#ffffff',   // Same as var(--background-light)
-          dark: '#f3f4f6',    // Same as var(--background-dark)
+          light: '#ffffff',   // White
+          dark: '#f1f5f9',    // Slate-100
+          card: '#ffffff',    // White
         },
-        danger: '#ef4444',    // Same as var(--danger)
-        success: '#10b981',   // Same as var(--success)
-        warning: '#f59e0b',   // Same as var(--warning)
-        info: '#3b82f6',      // Same as var(--info)
+        danger: '#ef4444',    // Red-500
+        success: '#22c55e',   // Green-500
+        warning: '#eab308',   // Yellow-500
+        info: '#06b6d4',      // Cyan-500
       },
       fontFamily: {
         'sans': ['Poppins', 'sans-serif'],
@@ -101,5 +110,62 @@ export default {
     'text-text-light',
     'bg-background-light',
     'bg-background-dark',
+    
+    // Filter and category classes
+    'bg-blue-100',
+    'text-blue-800',
+    'bg-green-100',
+    'text-green-800',
+    'bg-yellow-100',
+    'text-yellow-800',
+    'bg-red-100',
+    'text-red-800',
+    'bg-purple-100',
+    'text-purple-800',
+    'bg-orange-100',
+    'text-orange-800',
+    'bg-pink-100',
+    'text-pink-800',
+    'bg-indigo-100',
+    'text-indigo-800',
+    'bg-gray-100',
+    'text-gray-800',
+    'bg-blue-600',
+    'bg-indigo-700',
+    'from-blue-600',
+    'to-indigo-700',
+    'from-green-500',
+    'to-emerald-700',
+    'from-purple-600',
+    'to-indigo-800',
+    'bg-opacity-90',
+    'bg-opacity-60',
+    'bg-opacity-40',
+    'bg-opacity-30',
+    'bg-opacity-20',
+    'bg-opacity-10',
+    'hover:bg-opacity-50',
+    'hover:bg-blue-50',
+    'hover:bg-white',
+    'hover:text-blue-700',
+    'text-blue-700',
+    'text-blue-100',
+    'text-green-600',
+    'text-green-700',
+    'text-red-600',
+    'text-red-700',
+    'border-red-100',
+    'border-red-500',
+    'border-yellow-500',
+    'border-blue-500',
+    'border-green-500',
+    'border-purple-500',
+    'border-l-4',
+    'bg-red-50',
+    'bg-yellow-50',
+    'bg-green-50',
+    'bg-blue-50',
+    'bg-purple-50',
+    'bg-gray-50',
   ]
 }
