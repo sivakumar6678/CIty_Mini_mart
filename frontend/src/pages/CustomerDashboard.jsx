@@ -90,6 +90,37 @@ function CustomerDashboard() {
 
             {error && <p className="text-red-500 bg-red-100 p-3 rounded-md mb-4">{error}</p>}
 
+            {/* Shop by Category Section */}
+            <section className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Shop by Category</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                    <Link to="/products/category/Fruits" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🍎</div>
+                        <div className="font-medium">Fruits</div>
+                    </Link>
+                    <Link to="/products/category/Vegetables" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🥦</div>
+                        <div className="font-medium">Vegetables</div>
+                    </Link>
+                    <Link to="/products/category/Leafy Greens" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🥬</div>
+                        <div className="font-medium">Leafy Greens</div>
+                    </Link>
+                    <Link to="/products/category/Dairy" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🥛</div>
+                        <div className="font-medium">Dairy</div>
+                    </Link>
+                    <Link to="/products/category/Organic" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🌱</div>
+                        <div className="font-medium">Organic</div>
+                    </Link>
+                    <Link to="/products/category/Seasonal" className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow">
+                        <div className="text-4xl mb-2">🍓</div>
+                        <div className="font-medium">Seasonal</div>
+                    </Link>
+                </div>
+            </section>
+            
             <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-gray-700">Shops in {auth.city}</h2>
                 {loadingShops && <p>Loading shops...</p>}

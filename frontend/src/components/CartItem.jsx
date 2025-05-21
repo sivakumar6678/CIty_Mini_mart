@@ -17,7 +17,13 @@ const CartItem = ({ item, updateQuantity, removeFromCart, formatCurrency, index 
   const applyCustomQuantity = () => {
     const quantity = parseInt(customQuantity);
     if (!isNaN(quantity) && quantity > 0) {
-      updateQuantity(item.id, quantity);
+      // Check if requested quantity is available
+      if (item.quantity_available && quantity > item.quantity_available) {
+        alert(`Sorry, only ${item.quantity_available} items are available in stock.`);
+        setCustomQuantity(Math.min(item.quantity, item.quantity_available).toString());
+      } else {
+        updateQuantity(item.id, quantity);
+      }
     } else if (quantity === 0) {
       setShowConfirmDelete(true);
     }
@@ -176,7 +182,13 @@ const CartItem = ({ item, updateQuantity, removeFromCart, formatCurrency, index 
                 {item.quantity}
               </motion.span>
               <motion.button 
-                onClick={() => updateQuantity(item.id, item.quantity + 1)} 
+                onClick={() => {
+                  if (item.quantity_available && item.quantity >= item.quantity_available) {
+                    alert(`Sorry, only ${item.quantity_available} items are available in stock.`);
+                  } else {
+                    updateQuantity(item.id, item.quantity + 1);
+                  }
+                }} 
                 className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
                 whileTap={{ scale: 0.95 }}
               >

@@ -26,8 +26,24 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 # --- Extensions ---
 db = SQLAlchemy(app)
 # Configure CORS with explicit settings
-CORS(app, resources={r"/api/*": {"origins": "*", "supports_credentials": True, "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]}})
+CORS(app, 
+     resources={r"/*": {
+         "origins": ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"], 
+         "allow_headers": ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+         "expose_headers": ["Content-Type", "Authorization"],
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         "supports_credentials": True,
+         "max_age": 86400  # Cache preflight requests for 24 hours
+     }})
 jwt = JWTManager(app)
+
+# Global error handler to ensure CORS headers are sent with error responses
+@app.errorhandler(Exception)
+def handle_error(e):
+    code = 500
+    if hasattr(e, 'code'):
+        code = e.code
+    return jsonify(error=str(e)), code
 
 # JWT error handlers
 @jwt.unauthorized_loader
@@ -37,7 +53,6 @@ def unauthorized_callback(callback):
         'error': 'authorization_required'
     })
     response.status_code = 401
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 @jwt.invalid_token_loader
@@ -47,7 +62,6 @@ def invalid_token_callback(callback):
         'error': 'invalid_token'
     })
     response.status_code = 401
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 # --- Database Models ---
@@ -61,6 +75,7 @@ class User(db.Model):
     city = db.Column(db.String(100), nullable=False)
     shops = db.relationship('Shop', backref='owner', lazy=True, cascade="all, delete-orphan")
     orders = db.relationship('Order', backref='customer', lazy=True)
+    addresses = db.relationship('Address', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -84,6 +99,7 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     image_url = db.Column(db.String(255), nullable=True) # Placeholder for image path/URL
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0) # Available quantity of the product
 
 # Association table for many-to-many relationship between orders and products
 order_items = db.Table('order_items',
@@ -93,13 +109,36 @@ order_items = db.Table('order_items',
     db.Column('shop_id', db.Integer, db.ForeignKey('shops.id'), nullable=False) # To associate order item with shop
 )
 
+class Address(db.Model):
+    __tablename__ = 'addresses'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)  # Legacy column, will be same as full_name
+    full_name = db.Column(db.String(100), nullable=False)
+    street_address = db.Column(db.String(255), nullable=False)
+    landmark = db.Column(db.String(100), nullable=True)  # Added to match DB schema
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(100), nullable=False)
+    pincode = db.Column(db.String(20), nullable=False)  # Legacy column, will be same as postal_code
+    postal_code = db.Column(db.String(20), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)  # Legacy column, will be same as phone_number
+    phone_number = db.Column(db.String(20), nullable=False)
+    is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to orders
+    orders = db.relationship('Order', backref='delivery_address', lazy=True)
+
 class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    address_id = db.Column(db.Integer, db.ForeignKey('addresses.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     total_amount = db.Column(db.Float, nullable=False, default=0.0)
     status = db.Column(db.String(50), nullable=False, default='Pending') # e.g., Pending, Confirmed, Shipped, Delivered
+    payment_method = db.Column(db.String(50), nullable=True)
+    payment_transaction_id = db.Column(db.String(100), nullable=True)
     
     # Relationship to products through the association table
     products = db.relationship('Product', secondary=order_items, lazy='subquery',
@@ -187,6 +226,213 @@ def get_me():
         return jsonify(message="User not found"), 404
     return jsonify(id=user.id, name=user.name, email=user.email, role=user.role, city=user.city), 200
 
+@app.route('/api/auth/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    data = request.get_json()
+    
+    # Update user fields
+    if 'name' in data:
+        user.name = data['name']
+    if 'city' in data:
+        user.city = data['city']
+    
+    # Don't allow changing email or role through this endpoint for security
+    
+    # Update password if provided
+    if 'password' in data and data['password']:
+        user.set_password(data['password'])
+    
+    db.session.commit()
+    
+    return jsonify(message="Profile updated successfully"), 200
+
+# --- Address Routes ---
+@app.route('/api/addresses', methods=['GET'])
+@jwt_required()
+def get_addresses():
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    addresses = Address.query.filter_by(user_id=user.id).order_by(Address.is_default.desc(), Address.created_at.desc()).all()
+    
+    result = []
+    for address in addresses:
+        result.append({
+            'id': address.id,
+            'full_name': address.full_name,
+            'street_address': address.street_address,
+            'city': address.city,
+            'state': address.state,
+            'postal_code': address.postal_code,
+            'phone_number': address.phone_number,
+            'is_default': address.is_default
+        })
+    
+    return jsonify(result), 200
+
+@app.route('/api/addresses', methods=['POST'])
+@jwt_required()
+def add_address():
+    data = request.get_json()
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    # Validate required fields
+    required_fields = ['full_name', 'street_address', 'city', 'state', 'postal_code', 'phone_number']
+    for field in required_fields:
+        if field not in data or not data[field]:
+            return jsonify(message=f"Missing required field: {field}"), 400
+    
+    # Check if this is the first address for the user
+    is_first_address = Address.query.filter_by(user_id=user.id).count() == 0
+    
+    # Create new address
+    new_address = Address(
+        user_id=user.id,
+        name=data['full_name'],  # Set legacy field
+        full_name=data['full_name'],
+        street_address=data['street_address'],
+        landmark=data.get('landmark', ''),  # Optional field
+        city=data['city'],
+        state=data['state'],
+        pincode=data['postal_code'],  # Set legacy field
+        postal_code=data['postal_code'],
+        phone=data['phone_number'],  # Set legacy field
+        phone_number=data['phone_number'],
+        is_default=data.get('is_default', is_first_address)  # First address is default by default
+    )
+    
+    # If this address is set as default, unset any existing default
+    if new_address.is_default:
+        Address.query.filter_by(user_id=user.id, is_default=True).update({'is_default': False})
+    
+    db.session.add(new_address)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Address added successfully',
+        'address_id': new_address.id,
+        'is_default': new_address.is_default
+    }), 201
+
+@app.route('/api/addresses/<int:address_id>', methods=['PUT'])
+@jwt_required()
+def update_address(address_id):
+    data = request.get_json()
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    address = Address.query.filter_by(id=address_id, user_id=user.id).first()
+    if not address:
+        return jsonify(message="Address not found or does not belong to this user"), 404
+    
+    # Update fields
+    if 'full_name' in data:
+        address.full_name = data['full_name']
+        address.name = data['full_name']  # Update legacy field
+    if 'street_address' in data:
+        address.street_address = data['street_address']
+    if 'landmark' in data:
+        address.landmark = data['landmark']
+    if 'city' in data:
+        address.city = data['city']
+    if 'state' in data:
+        address.state = data['state']
+    if 'postal_code' in data:
+        address.postal_code = data['postal_code']
+        address.pincode = data['postal_code']  # Update legacy field
+    if 'phone_number' in data:
+        address.phone_number = data['phone_number']
+        address.phone = data['phone_number']  # Update legacy field
+    
+    # Handle default address setting
+    if 'is_default' in data and data['is_default'] and not address.is_default:
+        # Unset any existing default address
+        Address.query.filter_by(user_id=user.id, is_default=True).update({'is_default': False})
+        address.is_default = True
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Address updated successfully',
+        'address_id': address.id
+    }), 200
+
+@app.route('/api/addresses/<int:address_id>', methods=['DELETE'])
+@jwt_required()
+def delete_address(address_id):
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    address = Address.query.filter_by(id=address_id, user_id=user.id).first()
+    if not address:
+        return jsonify(message="Address not found or does not belong to this user"), 404
+    
+    was_default = address.is_default
+    
+    # Check if this address is used in any orders
+    orders_with_address = Order.query.filter_by(address_id=address_id).count()
+    if orders_with_address > 0:
+        return jsonify(message="Cannot delete address as it is used in orders"), 400
+    
+    db.session.delete(address)
+    
+    # If this was the default address, set another address as default if available
+    if was_default:
+        next_address = Address.query.filter_by(user_id=user.id).first()
+        if next_address:
+            next_address.is_default = True
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Address deleted successfully'
+    }), 200
+
+@app.route('/api/addresses/default', methods=['GET'])
+@jwt_required()
+def get_default_address():
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_user_email).first()
+    
+    if not user:
+        return jsonify(message="User not found"), 404
+    
+    default_address = Address.query.filter_by(user_id=user.id, is_default=True).first()
+    
+    if not default_address:
+        return jsonify(message="No default address found"), 404
+    
+    return jsonify({
+        'id': default_address.id,
+        'full_name': default_address.full_name,
+        'street_address': default_address.street_address,
+        'city': default_address.city,
+        'state': default_address.state,
+        'postal_code': default_address.postal_code,
+        'phone_number': default_address.phone_number,
+        'is_default': default_address.is_default
+    }), 200
+
 
 # --- Shop Routes ---
 @app.route('/api/shops', methods=['POST'])
@@ -248,6 +494,7 @@ def add_product():
     featured = data.get('featured', False)
     unit = data.get('unit', 'kg')  # Default unit for produce
     description = data.get('description', 'Fresh and locally sourced')
+    quantity = data.get('quantity', 0)  # Default quantity is 0
 
     current_user_email = get_jwt_identity()
     owner = User.query.filter_by(email=current_user_email).first()
@@ -271,7 +518,8 @@ def add_product():
         name=name, 
         price=price, 
         image_url=image_url, 
-        shop_id=shop.id
+        shop_id=shop.id,
+        quantity=quantity
     )
     
     # Try to set additional attributes if they exist in the model
@@ -305,7 +553,8 @@ def add_product():
         'featured': featured,
         'unit': unit,
         'description': description,
-        'sold_count': 0
+        'sold_count': 0,
+        'quantity': new_product.quantity
     }
     
     return jsonify({
@@ -341,6 +590,13 @@ def update_product(product_id):
             return jsonify(message="Invalid price format"), 400
     if 'image_url' in data:
         product.image_url = data['image_url']
+    if 'quantity' in data:
+        try:
+            quantity = int(data['quantity'])
+            if quantity < 0: raise ValueError
+            product.quantity = quantity
+        except ValueError:
+            return jsonify(message="Invalid quantity format"), 400
     
     # Try to update additional fields if they exist in the model
     category = data.get('category', 'Vegetables')
@@ -499,7 +755,8 @@ def get_all_products():
             'featured': False,  # Default featured status
             'unit': 'kg',  # Default unit for produce
             'description': 'Fresh and locally sourced',  # Default description
-            'sold_count': 0  # Default sold count
+            'sold_count': 0,  # Default sold count
+            'quantity': p.quantity  # Available quantity
         }
         
         # Try to access attributes that might not exist in the database
@@ -551,7 +808,8 @@ def get_products_by_city(city_name):
             'featured': False,  # Default featured status
             'unit': 'kg',  # Default unit for produce
             'description': 'Fresh and locally sourced',  # Default description
-            'sold_count': 0  # Default sold count
+            'sold_count': 0,  # Default sold count
+            'quantity': p.quantity  # Available quantity
         }
         
         # Try to access attributes that might not exist in the database
@@ -582,14 +840,32 @@ def get_products_by_city(city_name):
 def place_order():
     data = request.get_json()
     cart_items = data.get('items') # Expected format: [{"product_id": X, "quantity": Y}, ...]
+    payment_info = data.get('payment', {})
+    address_id = data.get('address_id')
     
     current_user_email = get_jwt_identity()
     customer = User.query.filter_by(email=current_user_email).first()
 
     if not cart_items:
         return jsonify(message="Cart is empty"), 400
+    
+    # Validate address
+    if not address_id:
+        return jsonify(message="Delivery address is required"), 400
+    
+    address = Address.query.filter_by(id=address_id, user_id=customer.id).first()
+    if not address:
+        return jsonify(message="Invalid delivery address"), 400
 
-    new_order = Order(customer_id=customer.id, total_amount=0) # Total amount calculated later
+    # Create new order with address and payment info
+    new_order = Order(
+        customer_id=customer.id, 
+        address_id=address.id,
+        total_amount=0, # Total amount calculated later
+        payment_method=payment_info.get('method'),
+        payment_transaction_id=payment_info.get('transaction_id')
+    )
+    
     db.session.add(new_order)
     db.session.flush() # To get new_order.id
 
@@ -602,6 +878,11 @@ def place_order():
         if not product or not isinstance(quantity, int) or quantity <= 0:
             db.session.rollback() # Important: rollback if any item is invalid
             return jsonify(message=f"Invalid product or quantity for product ID {item_data.get('product_id')}."), 400
+            
+        # Check if there's enough quantity available
+        if product.quantity < quantity:
+            db.session.rollback()
+            return jsonify(message=f"Not enough quantity available for {product.name}. Available: {product.quantity}, Requested: {quantity}"), 400
         
         # Add to order_items association
         stmt = order_items.insert().values(
@@ -613,10 +894,25 @@ def place_order():
         db.session.execute(stmt)
         total_order_amount += product.price * quantity
     
+    # Add COD fee if applicable
+    if payment_info.get('method') == 'cod':
+        total_order_amount += 40  # ₹40 COD fee
+    
     new_order.total_amount = total_order_amount
     db.session.commit()
 
-    return jsonify(message="Order placed successfully", order_id=new_order.id, total_amount=new_order.total_amount), 201
+    return jsonify(
+        message="Order placed successfully", 
+        order_id=new_order.id, 
+        total_amount=new_order.total_amount,
+        delivery_address={
+            'full_name': address.full_name,
+            'street_address': address.street_address,
+            'city': address.city,
+            'state': address.state,
+            'postal_code': address.postal_code
+        }
+    ), 201
 
 @app.route('/api/orders/customer', methods=['GET'])
 @customer_required
@@ -633,8 +929,25 @@ def get_customer_orders():
             'created_at': order.created_at.isoformat(),
             'total_amount': order.total_amount,
             'status': order.status,
+            'payment_method': order.payment_method,
+            'payment_transaction_id': order.payment_transaction_id,
             'items': []
         }
+        
+        # Add address information if available
+        if order.address_id:
+            address = Address.query.get(order.address_id)
+            if address:
+                order_data['delivery_address'] = {
+                    'id': address.id,
+                    'full_name': address.full_name,
+                    'street_address': address.street_address,
+                    'city': address.city,
+                    'state': address.state,
+                    'postal_code': address.postal_code,
+                    'phone_number': address.phone_number
+                }
+        
         # Fetch items for this order
         items_in_order = db.session.query(Product, order_items.c.quantity).\
             join(order_items, Product.id == order_items.c.product_id).\
@@ -742,6 +1055,24 @@ def update_order_status(order_id):
     order = Order.query.get(order_id)
     if not order:
         return jsonify(message="Order not found"), 404
+    
+    # If status is changing to "Shipped", reduce product quantities
+    if new_status == 'Shipped' and order.status != 'Shipped':
+        # Get all items in this order for this shop
+        order_items_for_shop = db.session.query(order_items).filter(
+            order_items.c.order_id == order_id,
+            order_items.c.shop_id == shop.id
+        ).all()
+        
+        for item in order_items_for_shop:
+            product = Product.query.get(item.product_id)
+            if product:
+                # Check if there's enough quantity
+                if product.quantity < item.quantity:
+                    return jsonify(message=f"Not enough quantity for product {product.name}. Available: {product.quantity}, Required: {item.quantity}"), 400
+                
+                # Reduce the quantity
+                product.quantity -= item.quantity
         
     order.status = new_status
     db.session.commit()
@@ -893,29 +1224,15 @@ def get_shop_analytics():
 def handle_500_error(e):
     response = jsonify({"message": "Internal server error", "error": str(e)})
     response.status_code = 500
-    # Add CORS headers to error responses
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
 @app.errorhandler(404)
 def handle_404_error(e):
     response = jsonify({"message": "Resource not found", "error": str(e)})
     response.status_code = 404
-    # Add CORS headers to error responses
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
 
-@app.after_request
-def after_request(response):
-    # Add CORS headers to all responses
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+# Removed the after_request handler as CORS is now handled by Flask-CORS extension
 
 # --- Main Execution ---
 if __name__ == '__main__':

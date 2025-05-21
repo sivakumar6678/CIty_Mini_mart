@@ -12,6 +12,7 @@ function AddProductPage() {
     const [imageUrl, setImageUrl] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
+    const [quantity, setQuantity] = useState('0');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
@@ -104,7 +105,8 @@ function AddProductPage() {
                 price: numericPrice, 
                 image_url: imageUrl,
                 description: description,
-                category: category
+                category: category,
+                quantity: parseInt(quantity) || 0
             });
             setSuccess(`Product "${productName}" added successfully!`);
             // Clear form
@@ -113,6 +115,7 @@ function AddProductPage() {
             setImageUrl('');
             setDescription('');
             setCategory('');
+            setQuantity('0');
             // Optionally navigate back to dashboard or product list after a delay
             setTimeout(() => {
                 // navigate('/admin/dashboard'); // Or a page showing all products
@@ -336,17 +339,38 @@ function AddProductPage() {
                                             onChange={(e) => setCategory(e.target.value)}
                                         >
                                             <option value="">Select a category</option>
-                                            <option value="Fruits & Vegetables">Fruits & Vegetables</option>
-                                            <option value="Dairy & Eggs">Dairy & Eggs</option>
-                                            <option value="Meat & Seafood">Meat & Seafood</option>
-                                            <option value="Bakery">Bakery</option>
-                                            <option value="Pantry">Pantry</option>
-                                            <option value="Beverages">Beverages</option>
-                                            <option value="Snacks">Snacks</option>
-                                            <option value="Household">Household</option>
-                                            <option value="Personal Care">Personal Care</option>
-                                            <option value="Other">Other</option>
+                                            <option value="Fruits">🍎 Fruits</option>
+                                            <option value="Vegetables">🥦 Vegetables</option>
+                                            <option value="Leafy Greens">🥬 Leafy Greens</option>
+                                            <option value="Dairy">🥛 Dairy</option>
+                                            <option value="Organic">🌱 Organic</option>
+                                            <option value="Seasonal">🍓 Seasonal</option>
+                                            <option value="Bakery">🍞 Bakery</option>
+                                            <option value="Meat">🥩 Meat</option>
+                                            <option value="Seafood">🐟 Seafood</option>
+                                            <option value="Pantry">🥫 Pantry</option>
+                                            <option value="Beverages">🥤 Beverages</option>
+                                            <option value="Snacks">🍿 Snacks</option>
+                                            <option value="Household">🧹 Household</option>
+                                            <option value="Personal Care">🧴 Personal Care</option>
+                                            <option value="Other">📦 Other</option>
                                         </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Quantity in Stock
+                                        </label>
+                                        <input
+                                            id="quantity"
+                                            name="quantity"
+                                            type="number"
+                                            min="0"
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-primary focus:border-primary transition duration-200"
+                                            placeholder="e.g., 100"
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(e.target.value)}
+                                        />
                                     </div>
 
                                     <div className="col-span-2">

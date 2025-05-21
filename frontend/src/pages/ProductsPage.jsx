@@ -111,14 +111,41 @@ function ProductsPage({ filter }) {
             return;
         }
         
+        // Check if product is in stock
+        if (product.quantity <= 0) {
+            setNotification({
+                show: true,
+                message: `${product.name} is out of stock.`,
+                type: 'error'
+            });
+            return;
+        }
+        
         setCart(prevCart => {
             const existingProduct = prevCart.find(item => item.id === product.id);
             if (existingProduct) {
+                // Check if adding one more would exceed available quantity
+                if (existingProduct.quantity >= product.quantity) {
+                    setNotification({
+                        show: true,
+                        message: `Cannot add more. Only ${product.quantity} items available in stock.`,
+                        type: 'warning'
+                    });
+                    return prevCart;
+                }
                 return prevCart.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                    item.id === product.id ? { 
+                        ...item, 
+                        quantity: item.quantity + 1,
+                        quantity_available: product.quantity // Store the available quantity
+                    } : item
                 );
             } else {
-                return [...prevCart, { ...product, quantity: 1 }];
+                return [...prevCart, { 
+                    ...product, 
+                    quantity: 1,
+                    quantity_available: product.quantity // Store the available quantity
+                }];
             }
         });
         
@@ -370,20 +397,39 @@ function ProductsPage({ filter }) {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
                                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                                        {availableCategories.map(category => (
-                                            <div key={category} className="flex items-center">
-                                                <input
-                                                    type="checkbox"
-                                                    id={`category-${category}`}
-                                                    checked={selectedCategories.includes(category)}
-                                                    onChange={() => handleCategoryToggle(category)}
-                                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                                />
-                                                <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
-                                                    {category}
-                                                </label>
-                                            </div>
-                                        ))}
+                                        {availableCategories.map(category => {
+                                            // Map category names to emojis
+                                            let emoji = "📦"; // Default emoji
+                                            if (category === "Fruits") emoji = "🍎";
+                                            else if (category === "Vegetables") emoji = "🥦";
+                                            else if (category === "Leafy Greens") emoji = "🥬";
+                                            else if (category === "Dairy") emoji = "🥛";
+                                            else if (category === "Organic") emoji = "🌱";
+                                            else if (category === "Seasonal") emoji = "🍓";
+                                            else if (category === "Bakery") emoji = "🍞";
+                                            else if (category === "Meat") emoji = "🥩";
+                                            else if (category === "Seafood") emoji = "🐟";
+                                            else if (category === "Pantry") emoji = "🥫";
+                                            else if (category === "Beverages") emoji = "🥤";
+                                            else if (category === "Snacks") emoji = "🍿";
+                                            else if (category === "Household") emoji = "🧹";
+                                            else if (category === "Personal Care") emoji = "🧴";
+                                            
+                                            return (
+                                                <div key={category} className="flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        id={`category-${category}`}
+                                                        checked={selectedCategories.includes(category)}
+                                                        onChange={() => handleCategoryToggle(category)}
+                                                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                                    />
+                                                    <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
+                                                        {emoji} {category}
+                                                    </label>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 

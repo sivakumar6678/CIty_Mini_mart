@@ -87,14 +87,15 @@ function CartPage() {
         }));
 
         try {
-            // Include payment details with the order
+            // Include payment details and address_id with the order
             const response = await placeOrder({ 
                 items: orderItems,
                 payment: {
                     transaction_id: paymentDetails.transactionId,
                     method: paymentDetails.method,
                     amount: paymentDetails.amount
-                }
+                },
+                address_id: paymentDetails.address_id
             });
             
             setSuccess(`Order placed successfully! Order ID: ${response.data.order_id}. Total: ${formatCurrency(response.data.total_amount)}`);

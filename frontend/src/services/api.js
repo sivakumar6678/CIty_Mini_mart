@@ -97,6 +97,13 @@ export const getProductsByCity = async (cityName) => {
     }
 };
 
+// --- Addresses ---
+export const getAddresses = () => apiClient.get('/addresses');
+export const getDefaultAddress = () => apiClient.get('/addresses/default');
+export const addAddress = (addressData) => apiClient.post('/addresses', addressData);
+export const updateAddress = (addressId, addressData) => apiClient.put(`/addresses/${addressId}`, addressData);
+export const deleteAddress = (addressId) => apiClient.delete(`/addresses/${addressId}`);
+
 // --- Orders ---
 export const placeOrder = (orderData) => apiClient.post('/orders', orderData);
 export const getCustomerOrders = () => apiClient.get('/orders/customer');

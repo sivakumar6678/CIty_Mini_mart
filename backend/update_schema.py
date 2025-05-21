@@ -38,7 +38,8 @@ def add_columns_to_products():
             ("featured", "BOOLEAN", "FALSE"),
             ("unit", "VARCHAR(20)", "'kg'"),
             ("description", "TEXT", "NULL"),
-            ("sold_count", "INT", "0")
+            ("sold_count", "INT", "0"),
+            ("quantity", "INT", "0")
         ]
         
         for column_name, data_type, default_value in columns_to_add:

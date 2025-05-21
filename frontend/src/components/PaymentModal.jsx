@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AddressSelector from './AddressSelector';
 
 const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrency }) => {
   const [paymentMethod, setPaymentMethod] = useState('card');
@@ -11,8 +12,50 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
   const [upiId, setUpiId] = useState('');
   const [error, setError] = useState('');
   const [cardType, setCardType] = useState('credit');
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [currentStep, setCurrentStep] = useState('address'); // 'address' or 'payment'
+  const [addressNotification, setAddressNotification] = useState({ message: '', type: '' });
 
+  // Reset state when modal is opened/closed
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep('address');
+      setError('');
+    } else {
+      resetForm();
+    }
+  }, [isOpen]);
+
+  // Function to handle address selection
+  const handleAddressSelect = (address) => {
+    setSelectedAddress(address);
+    // Format the address for display in the textarea
+    if (address) {
+      const formattedAddress = `${address.full_name}, ${address.street_address}, ${address.city}, ${address.state}, ${address.postal_code}, Phone: ${address.phone_number}`;
+      setDeliveryAddress(formattedAddress);
+    }
+  };
+  
+  // Handle address update notifications
+  const handleAddressUpdate = (message, type) => {
+    setAddressNotification({ message, type });
+    // Clear notification after 3 seconds
+    setTimeout(() => {
+      setAddressNotification({ message: '', type: '' });
+    }, 3000);
+  };
+  
+  const proceedToPayment = () => {
+    if (!selectedAddress) {
+      setError('Please select a delivery address');
+      return;
+    }
+    
+    setCurrentStep('payment');
+    setError('');
+  };
+  
   // Mock function to simulate payment processing
   const processPayment = () => {
     setIsProcessing(true);
@@ -44,12 +87,14 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
         setIsProcessing(false);
         return;
       }
-    } else if (paymentMethod === 'cod') {
-      if (!deliveryAddress.trim()) {
-        setError('Please confirm your delivery address for Cash on Delivery');
-        setIsProcessing(false);
-        return;
-      }
+    }
+    
+    // Ensure we have a selected address
+    if (!selectedAddress) {
+      setError('Please select a delivery address');
+      setCurrentStep('address');
+      setIsProcessing(false);
+      return;
     }
     
     // Simulate API call to payment gateway
@@ -64,7 +109,8 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
           amount: amount,
           method: paymentMethod,
           cardType: paymentMethod === 'card' ? cardType : null,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          address_id: selectedAddress.id
         });
         resetForm();
       } else {
@@ -188,15 +234,17 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
           onClick={handleClose}
         >
           <motion.div 
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', damping: 25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6">
-              <h2 className="text-2xl font-bold">Complete Your Payment</h2>
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 sticky top-0 z-10">
+              <h2 className="text-2xl font-bold">
+                {currentStep === 'address' ? 'Select Delivery Address' : 'Complete Your Payment'}
+              </h2>
               <p className="text-white text-opacity-90 mt-1">
                 Amount to pay: {formatCurrency(amount)}
               </p>
@@ -209,55 +257,111 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
                 </div>
               )}
               
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-3">Payment Method</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="form-radio text-blue-600"
-                    />
-                    <div className="ml-2 flex items-center">
-                      {getPaymentIcon('card')}
-                      <span>Card</span>
-                    </div>
-                  </label>
-                  
-                  <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="upi"
-                      checked={paymentMethod === 'upi'}
-                      onChange={() => setPaymentMethod('upi')}
-                      className="form-radio text-blue-600"
-                    />
-                    <div className="ml-2 flex items-center">
-                      {getPaymentIcon('upi')}
-                      <span>UPI</span>
-                    </div>
-                  </label>
-                  
-                  <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
-                      className="form-radio text-blue-600"
-                    />
-                    <div className="ml-2 flex items-center">
-                      {getPaymentIcon('cod')}
-                      <span>Cash on Delivery</span>
-                    </div>
-                  </label>
+              {addressNotification.message && (
+                <div className={`mb-4 p-3 border-l-4 rounded ${
+                  addressNotification.type === 'success' 
+                    ? 'bg-green-50 border-green-500 text-green-700' 
+                    : 'bg-red-50 border-red-500 text-red-700'
+                }`}>
+                  <p>{addressNotification.message}</p>
                 </div>
-              </div>
+              )}
+              
+              {currentStep === 'address' ? (
+                <div className="mb-6">
+                  <AddressSelector 
+                    onAddressSelect={handleAddressSelect}
+                    selectedAddressId={selectedAddress?.id}
+                    onAddressUpdate={handleAddressUpdate}
+                    title="Select Delivery Address"
+                  />
+                  
+                  <div className="mt-6 flex justify-between">
+                    <button
+                      onClick={handleClose}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    
+                    <motion.button
+                      onClick={proceedToPayment}
+                      disabled={!selectedAddress}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      whileHover={{ scale: !selectedAddress ? 1 : 1.03 }}
+                      whileTap={{ scale: !selectedAddress ? 1 : 0.97 }}
+                    >
+                      Continue to Payment
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-3">Payment Method</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="card"
+                          checked={paymentMethod === 'card'}
+                          onChange={() => setPaymentMethod('card')}
+                          className="form-radio text-blue-600"
+                        />
+                        <div className="ml-2 flex items-center">
+                          {getPaymentIcon('card')}
+                          <span>Card</span>
+                        </div>
+                      </label>
+                      
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="upi"
+                          checked={paymentMethod === 'upi'}
+                          onChange={() => setPaymentMethod('upi')}
+                          className="form-radio text-blue-600"
+                        />
+                        <div className="ml-2 flex items-center">
+                          {getPaymentIcon('upi')}
+                          <span>UPI</span>
+                        </div>
+                      </label>
+                      
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="cod"
+                          checked={paymentMethod === 'cod'}
+                          onChange={() => setPaymentMethod('cod')}
+                          className="form-radio text-blue-600"
+                        />
+                        <div className="ml-2 flex items-center">
+                          {getPaymentIcon('cod')}
+                          <span>Cash on Delivery</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Selected Address Summary */}
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-semibold text-gray-700">Delivery Address</h3>
+                      <button 
+                        onClick={() => setCurrentStep('address')}
+                        className="text-blue-600 text-sm hover:text-blue-800"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-600">{deliveryAddress}</p>
+                  </div>
+                </>
+              )}
               
               {/* Card Payment Form */}
               {paymentMethod === 'card' && (
@@ -422,34 +526,36 @@ const PaymentModal = ({ isOpen, onClose, amount, onPaymentSuccess, formatCurrenc
                 </div>
               )}
               
-              <div className="mt-8 flex justify-end space-x-3">
-                <button
-                  onClick={handleClose}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                
-                <motion.button
-                  onClick={processPayment}
-                  disabled={isProcessing}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  whileHover={{ scale: isProcessing ? 1 : 1.03 }}
-                  whileTap={{ scale: isProcessing ? 1 : 0.97 }}
-                >
-                  {isProcessing ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : (
-                    `Pay ${formatCurrency(paymentMethod === 'cod' ? amount + 40 : amount)}`
-                  )}
-                </motion.button>
-              </div>
+              {currentStep === 'payment' && (
+                <div className="mt-8 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setCurrentStep('address')}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
+                  
+                  <motion.button
+                    onClick={processPayment}
+                    disabled={isProcessing}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    whileHover={{ scale: isProcessing ? 1 : 1.03 }}
+                    whileTap={{ scale: isProcessing ? 1 : 0.97 }}
+                  >
+                    {isProcessing ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : (
+                      `Pay ${formatCurrency(paymentMethod === 'cod' ? amount + 40 : amount)}`
+                    )}
+                  </motion.button>
+                </div>
+              )}
             </div>
           </motion.div>
         </motion.div>

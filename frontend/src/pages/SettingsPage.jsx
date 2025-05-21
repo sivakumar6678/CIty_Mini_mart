@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { AuthContext } from '../App';
 import { updateUserProfile } from '../services/api';
 import Toast from '../components/Toast';
+import AddressSelector from '../components/AddressSelector';
 
 function SettingsPage() {
     const { auth, setAuth } = useContext(AuthContext);
@@ -171,6 +172,12 @@ function SettingsPage() {
                         onClick={() => setActiveTab('preferences')}
                     >
                         Preferences
+                    </button>
+                    <button
+                        className={`px-6 py-4 text-sm font-medium ${activeTab === 'addresses' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setActiveTab('addresses')}
+                    >
+                        Addresses
                     </button>
                 </div>
 
@@ -371,6 +378,34 @@ function SettingsPage() {
                             >
                                 Save Preferences
                             </motion.button>
+                        </div>
+                    </motion.div>
+                )}
+                
+                {/* Addresses Tab */}
+                {activeTab === 'addresses' && (
+                    <motion.div 
+                        className="p-6"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <h3 className="text-lg font-medium text-gray-800 mb-4">Manage Your Addresses</h3>
+                        <p className="text-gray-600 mb-6">
+                            Add, edit, or remove delivery addresses. Your saved addresses will be available during checkout.
+                        </p>
+                        <div className="mt-2">
+                            <AddressSelector 
+                                onAddressSelect={() => {}} 
+                                isManagementMode={true}
+                                onAddressUpdate={(message, type) => {
+                                    setNotification({
+                                        show: true,
+                                        message,
+                                        type
+                                    });
+                                }}
+                            />
                         </div>
                     </motion.div>
                 )}
