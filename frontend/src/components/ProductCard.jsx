@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { calculateDiscountedPrice } from '../utils/priceUtils';
 
 // Helper function to get emoji for category
 const getCategoryEmoji = (category) => {
@@ -94,8 +95,26 @@ const ProductCard = ({ product, onAddToCart, isCustomer, formatCurrency }) => {
             e.target.src=`https://placehold.co/600x400/E2E8F0/A0AEC0?text=${product.name.charAt(0)}`; 
           }}
         />
-        <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
-          {formatCurrency(product.price)}
+        <div className="absolute top-2 right-2 flex flex-col items-end">
+          {product.discount_percentage > 0 ? (
+            <>
+              <div className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md mb-1">
+                {product.discount_percentage}% OFF
+              </div>
+              <div className="flex items-center">
+                <span className="bg-gray-200 text-gray-500 text-xs line-through px-2 py-1 rounded-full mr-1">
+                  {formatCurrency(product.price)}
+                </span>
+                <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+                  {formatCurrency(calculateDiscountedPrice(product.price, product.discount_percentage))}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+              {formatCurrency(product.price)}
+            </div>
+          )}
         </div>
       </div>
       

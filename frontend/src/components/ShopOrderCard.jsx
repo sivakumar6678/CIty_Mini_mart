@@ -170,7 +170,7 @@ const ShopOrderCard = ({ order, formatCurrency, formatDate, onUpdateStatus, inde
                           Price
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quantity
+                          Qty Ordered
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total
@@ -204,7 +204,7 @@ const ShopOrderCard = ({ order, formatCurrency, formatDate, onUpdateStatus, inde
                             <div className="text-sm text-gray-900">{formatCurrency(item.price)}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{item.quantity}</div>
+                            <div className="text-sm font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full inline-block text-center min-w-[40px]">{item.quantity}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {formatCurrency(item.price * item.quantity)}

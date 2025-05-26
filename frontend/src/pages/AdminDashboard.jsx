@@ -2,15 +2,13 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { getMyShop, getProductsByShop, deleteProduct, getShopOrders } from '../services/api'; // Assuming API functions
+import { getMyShop, getShopOrders } from '../services/api'; // Removed product-related imports
 
 function AdminDashboard() {
     const { auth } = useContext(AuthContext);
     const [shop, setShop] = useState(null);
-    const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
     const [loadingShop, setLoadingShop] = useState(true);
-    const [loadingProducts, setLoadingProducts] = useState(false);
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [error, setError] = useState('');
 
@@ -20,7 +18,6 @@ function AdminDashboard() {
 
     useEffect(() => {
         if (shop && shop.id) {
-            fetchShopProducts(shop.id);
             fetchShopOrders(); // Fetch orders when shop details are available
         }
     }, [shop]);
@@ -43,19 +40,6 @@ function AdminDashboard() {
         }
     };
 
-    const fetchShopProducts = async (shopId) => {
-        setLoadingProducts(true);
-        try {
-            const response = await getProductsByShop(shopId);
-            setProducts(response.data || []);
-        } catch (err) {
-            setError(`Failed to fetch products: ${err.response?.data?.message || err.message}`);
-            setProducts([]);
-        } finally {
-            setLoadingProducts(false);
-        }
-    };
-
     const fetchShopOrders = async () => {
         setLoadingOrders(true);
         try {
@@ -66,18 +50,6 @@ function AdminDashboard() {
             setOrders([]);
         } finally {
             setLoadingOrders(false);
-        }
-    };
-
-
-    const handleDeleteProduct = async (productId) => {
-        if (window.confirm("Are you sure you want to delete this product?")) {
-            try {
-                await deleteProduct(productId);
-                setProducts(products.filter(p => p.id !== productId));
-            } catch (err) {
-                setError(`Failed to delete product: ${err.response?.data?.message || err.message}`);
-            }
         }
     };
 
@@ -117,40 +89,46 @@ function AdminDashboard() {
             {shop && (
                 <>
                     <div className="mb-8">
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Manage Products</h2>
-                        <div className="flex flex-wrap gap-3 mb-4">
-                            <Link to="/admin/add-product" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-block">
-                                + Add New Product
-                            </Link>
-                            <Link to="/admin/manage-offers" className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded inline-block">
-                                Manage Offers
-                            </Link>
-                        </div>
-                        {loadingProducts && <p>Loading products...</p>}
-                        {!loadingProducts && products.length === 0 && <p className="text-gray-500">You have no products yet. Add some!</p>}
+                        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Shop Management</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {products.map(product => (
-                                <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                                    <img 
-                                        src={product.image_url || `https://placehold.co/600x400/E2E8F0/A0AEC0?text=${product.name.replace(/\s/g,'+')}`} 
-                                        alt={product.name} 
-                                        className="w-full h-48 object-cover"
-                                        onError={(e) => { e.target.onerror = null; e.target.src=`https://placehold.co/600x400/E2E8F0/A0AEC0?text=Image+Not+Found`; }}
-                                    />
-                                    <div className="p-4">
-                                        <h3 className="text-xl font-semibold text-gray-800">{product.name}</h3>
-                                        <p className="text-md text-green-600 font-bold">{formatCurrency(product.price)}</p>
-                                        <div className="mt-4 space-x-2">
-                                            {/* <Link to={`/admin/edit-product/${product.id}`} className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded">Edit</Link> */}
-                                            <button 
-                                                onClick={() => handleDeleteProduct(product.id)}
-                                                className="text-sm bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded">
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
+                            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                <div className="p-6 flex flex-col items-center text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                    </svg>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Products</h3>
+                                    <p className="text-gray-600 mb-4">Manage your shop's products inventory</p>
+                                    <Link to="/admin/products" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-block w-full">
+                                        Manage Products
+                                    </Link>
                                 </div>
-                            ))}
+                            </div>
+                            
+                            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                <div className="p-6 flex flex-col items-center text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-purple-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a4 4 0 00-4-4H8.8a4 4 0 00-2.6.9l-.7.7a4 4 0 00-.9 2.6V8m12 0V6a4 4 0 00-4-4h-.8a4 4 0 00-2.6.9l-.7.7a4 4 0 00-.9 2.6V8" />
+                                    </svg>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Offers</h3>
+                                    <p className="text-gray-600 mb-4">Create and manage special offers</p>
+                                    <Link to="/admin/manage-offers" className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded inline-block w-full">
+                                        Manage Offers
+                                    </Link>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                                <div className="p-6 flex flex-col items-center text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Add Product</h3>
+                                    <p className="text-gray-600 mb-4">Add new products to your inventory</p>
+                                    <Link to="/admin/add-product" className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-block w-full">
+                                        Add New Product
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

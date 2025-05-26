@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../App';
 import { getProducts, updateProduct } from '../services/api';
 import Toast from '../components/Toast';
+import { calculateDiscountedPrice, formatCurrency } from '../utils/priceUtils';
 
 const ManageOffersPage = () => {
   const [products, setProducts] = useState([]);
@@ -118,15 +119,7 @@ const ManageOffersPage = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    if (typeof amount !== 'number') return 'N/A';
-    return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  };
-
-  const calculateDiscountedPrice = (price, discountPercentage) => {
-    if (typeof price !== 'number' || typeof discountPercentage !== 'number') return price;
-    return price - (price * (discountPercentage / 100));
-  };
+  // Using imported formatCurrency and calculateDiscountedPrice functions from utils
 
   const closeNotification = () => {
     setNotification({ ...notification, show: false });

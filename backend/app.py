@@ -100,6 +100,12 @@ class Product(db.Model):
     image_url = db.Column(db.String(255), nullable=True) # Placeholder for image path/URL
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=0) # Available quantity of the product
+    category = db.Column(db.String(50), nullable=False, default='Vegetables') # Product category
+    discount_percentage = db.Column(db.Float, nullable=False, default=0) # Discount percentage
+    featured = db.Column(db.Boolean, nullable=False, default=False) # Whether product is featured
+    description = db.Column(db.Text, nullable=True) # Product description
+    unit = db.Column(db.String(20), nullable=False, default='kg') # Unit of measurement
+    sold_count = db.Column(db.Integer, nullable=False, default=0) # Number of units sold
 
 # Association table for many-to-many relationship between orders and products
 order_items = db.Table('order_items',
@@ -598,36 +604,38 @@ def update_product(product_id):
         except ValueError:
             return jsonify(message="Invalid quantity format"), 400
     
-    # Try to update additional fields if they exist in the model
-    category = data.get('category', 'Vegetables')
-    discount_percentage = data.get('discount_percentage', 0)
-    featured = data.get('featured', False)
-    unit = data.get('unit', 'kg')
-    description = data.get('description', '')
-    
+    # Update all fields
     try:
-        # Update new fields if they exist in the model
-        if 'category' in data and hasattr(product, 'category'):
+        # Update category field
+        if 'category' in data:
             product.category = data['category']
-        if 'discount_percentage' in data and hasattr(product, 'discount_percentage'):
+        
+        # Update discount_percentage field
+        if 'discount_percentage' in data:
             try:
                 discount = float(data['discount_percentage'])
                 if discount < 0 or discount > 100: raise ValueError
                 product.discount_percentage = discount
             except ValueError:
                 return jsonify(message="Invalid discount percentage"), 400
-        if 'featured' in data and hasattr(product, 'featured'):
+        
+        # Update featured field
+        if 'featured' in data:
             product.featured = bool(data['featured'])
-        if 'unit' in data and hasattr(product, 'unit'):
+        
+        # Update unit field
+        if 'unit' in data:
             product.unit = data['unit']
-        if 'description' in data and hasattr(product, 'description'):
+        
+        # Update description field
+        if 'description' in data:
             product.description = data['description']
     except Exception as e:
         print(f"Error updating product attributes: {e}")
     
     db.session.commit()
     
-    # Return the updated product with default values for missing columns
+    # Return the updated product with all fields
     product_data = {
         'id': product.id,
         'name': product.name,
@@ -635,30 +643,14 @@ def update_product(product_id):
         'image_url': product.image_url,
         'shop_id': product.shop_id,
         'shop_name': product.shop.name,
-        'category': category,
-        'discount_percentage': discount_percentage,
-        'featured': featured,
-        'unit': unit,
-        'description': description,
-        'sold_count': 0
+        'quantity': product.quantity,
+        'category': product.category,
+        'discount_percentage': product.discount_percentage,
+        'featured': product.featured,
+        'unit': product.unit,
+        'description': product.description,
+        'sold_count': product.sold_count
     }
-    
-    # Try to get actual values if attributes exist
-    try:
-        if hasattr(product, 'category'):
-            product_data['category'] = product.category
-        if hasattr(product, 'discount_percentage'):
-            product_data['discount_percentage'] = product.discount_percentage
-        if hasattr(product, 'featured'):
-            product_data['featured'] = product.featured
-        if hasattr(product, 'unit'):
-            product_data['unit'] = product.unit
-        if hasattr(product, 'description'):
-            product_data['description'] = product.description
-        if hasattr(product, 'sold_count'):
-            product_data['sold_count'] = product.sold_count
-    except Exception as e:
-        print(f"Error accessing product attributes: {e}")
     
     return jsonify(product_data), 200
 
@@ -699,30 +691,14 @@ def get_products_by_shop(shop_id):
             'shop_id': p.shop_id,
             'shop_name': shop.name,
             'city': shop.city,
-            'category': 'Vegetables',  # Default category
-            'discount_percentage': 0,  # Default discount
-            'featured': False,  # Default featured status
-            'unit': 'kg',  # Default unit for produce
-            'description': 'Fresh and locally sourced',  # Default description
-            'sold_count': 0  # Default sold count
+            'quantity': p.quantity,
+            'category': p.category,
+            'discount_percentage': p.discount_percentage,
+            'featured': p.featured,
+            'unit': p.unit,
+            'description': p.description,
+            'sold_count': p.sold_count
         }
-        
-        # Try to access attributes that might not exist in the database
-        try:
-            if hasattr(p, 'category') and p.category:
-                product_data['category'] = p.category
-            if hasattr(p, 'discount_percentage') and p.discount_percentage is not None:
-                product_data['discount_percentage'] = p.discount_percentage
-            if hasattr(p, 'featured') and p.featured is not None:
-                product_data['featured'] = p.featured
-            if hasattr(p, 'unit') and p.unit:
-                product_data['unit'] = p.unit
-            if hasattr(p, 'description') and p.description:
-                product_data['description'] = p.description
-            if hasattr(p, 'sold_count') and p.sold_count is not None:
-                product_data['sold_count'] = p.sold_count
-        except Exception as e:
-            print(f"Error accessing product attributes: {e}")
             
         result.append(product_data)
     
@@ -1013,7 +989,8 @@ def get_shop_orders():
                 'product_id': product.id,
                 'name': product.name,
                 'price': product.price,
-                'quantity': quantity
+                'quantity': quantity,
+                'image_url': product.image_url if hasattr(product, 'image_url') else None
             })
             shop_specific_total += product.price * quantity
         

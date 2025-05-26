@@ -21,6 +21,8 @@ import OrdersPage from './pages/OrdersPage'; // Customer orders
 import ShopOrdersPage from './pages/ShopOrdersPage'; // Admin shop orders
 import CreateShopPage from './pages/CreateShopPage'; // Admin create shop
 import AddProductPage from './pages/AddProductPage'; // Admin add product
+import ManageProductsPage from './pages/ManageProductsPage'; // Admin manage products
+import EditProductPage from './pages/EditProductPage'; // Admin edit product
 import ManageOffersPage from './pages/ManageOffersPage'; // Admin manage offers
 import SettingsPage from './pages/SettingsPage'; // User settings
 
@@ -180,6 +182,12 @@ function App() {
                             } />
                             <Route path="/admin/manage-offers" element={
                                 auth.isAuthenticated && auth.role === 'admin' ? <ManageOffersPage /> : <Navigate to="/login" />
+                            } />
+                            <Route path="/admin/products" element={
+                                auth.isAuthenticated && auth.role === 'admin' ? <ManageProductsPage /> : <Navigate to="/login" />
+                            } />
+                            <Route path="/admin/edit-product/:productId" element={
+                                auth.isAuthenticated && auth.role === 'admin' ? <EditProductPage /> : <Navigate to="/login" />
                             } />
                         </Route>
 
