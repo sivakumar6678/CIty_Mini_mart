@@ -109,6 +109,7 @@ export const placeOrder = (orderData) => apiClient.post('/orders', orderData);
 export const getCustomerOrders = () => apiClient.get('/orders/customer');
 export const getShopOrders = () => apiClient.get('/orders/shop'); // Admin getting orders for their shop
 export const updateOrderStatus = (orderId, status) => apiClient.put(`/orders/${orderId}/status`, { status });
+export const cancelOrder = (orderId) => apiClient.put(`/orders/${orderId}/cancel`, { status: 'Cancelled' });
 
 // --- Analytics ---
 export const getShopAnalytics = (days = 30) => apiClient.get(`/admin/analytics?days=${days}`);

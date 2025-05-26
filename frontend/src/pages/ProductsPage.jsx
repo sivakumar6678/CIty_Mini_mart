@@ -6,6 +6,8 @@ import { getProductsByCity, getProducts } from '../services/api';
 import { AuthContext } from '../App'; // To manage cart
 import ProductCard from '../components/ProductCard';
 import Toast from '../components/Toast';
+import { getCategoryEmoji } from '../utils/categoryUtils';
+import { formatCurrency } from '../utils/priceUtils';
 
 function ProductsPage({ filter }) {
     const { cityName, categoryName } = useParams();
@@ -157,10 +159,7 @@ function ProductsPage({ filter }) {
         });
     };
 
-    const formatCurrency = (amount) => {
-        if (typeof amount !== 'number') return 'N/A';
-        return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
-    };
+    // Using imported formatCurrency function
 
     const closeNotification = () => {
         setNotification({ ...notification, show: false });
@@ -397,39 +396,27 @@ function ProductsPage({ filter }) {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Categories</label>
                                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                                        {availableCategories.map(category => {
-                                            // Map category names to emojis
-                                            let emoji = "📦"; // Default emoji
-                                            if (category === "Fruits") emoji = "🍎";
-                                            else if (category === "Vegetables") emoji = "🥦";
-                                            else if (category === "Leafy Greens") emoji = "🥬";
-                                            else if (category === "Dairy") emoji = "🥛";
-                                            else if (category === "Organic") emoji = "🌱";
-                                            else if (category === "Seasonal") emoji = "🍓";
-                                            else if (category === "Bakery") emoji = "🍞";
-                                            else if (category === "Meat") emoji = "🥩";
-                                            else if (category === "Seafood") emoji = "🐟";
-                                            else if (category === "Pantry") emoji = "🥫";
-                                            else if (category === "Beverages") emoji = "🥤";
-                                            else if (category === "Snacks") emoji = "🍿";
-                                            else if (category === "Household") emoji = "🧹";
-                                            else if (category === "Personal Care") emoji = "🧴";
-                                            
-                                            return (
-                                                <div key={category} className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`category-${category}`}
-                                                        checked={selectedCategories.includes(category)}
-                                                        onChange={() => handleCategoryToggle(category)}
-                                                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                                    />
-                                                    <label htmlFor={`category-${category}`} className="ml-2 text-sm text-gray-700">
-                                                        {emoji} {category}
-                                                    </label>
-                                                </div>
-                                            );
-                                        })}
+                                        {availableCategories.map(category => (
+                                            <div key={category} className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`category-${category}`}
+                                                    checked={selectedCategories.includes(category)}
+                                                    onChange={() => handleCategoryToggle(category)}
+                                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                                />
+                                                <label 
+                                                    htmlFor={`category-${category}`} 
+                                                    className={`ml-2 text-sm rounded-full px-2 py-1 ${
+                                                        selectedCategories.includes(category) 
+                                                            ? 'bg-primary-light text-primary-dark font-medium' 
+                                                            : 'text-gray-700'
+                                                    }`}
+                                                >
+                                                    {getCategoryEmoji(category)} {category}
+                                                </label>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                                 

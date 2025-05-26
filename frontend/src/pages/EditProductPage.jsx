@@ -6,6 +6,7 @@ import { AuthContext } from '../App';
 import { getMyShop, getProductsByShop, updateProduct } from '../services/api';
 import Toast from '../components/Toast';
 import { calculateDiscountedPrice, formatCurrency } from '../utils/priceUtils';
+import { PRODUCT_CATEGORIES } from '../utils/categoryUtils';
 
 function EditProductPage() {
     const { productId } = useParams();
@@ -275,16 +276,12 @@ function EditProductPage() {
                                     onChange={handleInputChange}
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
                                 >
-                                    <option value="Vegetables">Vegetables</option>
-                                    <option value="Fruits">Fruits</option>
-                                    <option value="Dairy">Dairy</option>
-                                    <option value="Bakery">Bakery</option>
-                                    <option value="Meat">Meat</option>
-                                    <option value="Seafood">Seafood</option>
-                                    <option value="Snacks">Snacks</option>
-                                    <option value="Beverages">Beverages</option>
-                                    <option value="Household">Household</option>
-                                    <option value="Other">Other</option>
+                                    {PRODUCT_CATEGORIES.map(cat => (
+                                        <option key={cat.id} value={cat.name}>
+                                            {cat.icon} {cat.name}
+                                        </option>
+                                    ))}
+                                    <option value="Other">📦 Other</option>
                                 </select>
                             </div>
                             

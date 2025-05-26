@@ -83,6 +83,8 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+# We'll define the order_items table after all the models
+
 class Shop(db.Model):
     __tablename__ = 'shops'
     id = db.Column(db.Integer, primary_key=True)
@@ -90,7 +92,6 @@ class Shop(db.Model):
     city = db.Column(db.String(100), nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     products = db.relationship('Product', backref='shop', lazy=True, cascade="all, delete-orphan")
-    orders = db.relationship('Order', secondary='order_items') # For shop orders
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -106,14 +107,6 @@ class Product(db.Model):
     description = db.Column(db.Text, nullable=True) # Product description
     unit = db.Column(db.String(20), nullable=False, default='kg') # Unit of measurement
     sold_count = db.Column(db.Integer, nullable=False, default=0) # Number of units sold
-
-# Association table for many-to-many relationship between orders and products
-order_items = db.Table('order_items',
-    db.Column('order_id', db.Integer, db.ForeignKey('orders.id'), primary_key=True),
-    db.Column('product_id', db.Integer, db.ForeignKey('products.id'), primary_key=True),
-    db.Column('quantity', db.Integer, nullable=False, default=1),
-    db.Column('shop_id', db.Integer, db.ForeignKey('shops.id'), nullable=False) # To associate order item with shop
-)
 
 class Address(db.Model):
     __tablename__ = 'addresses'
@@ -146,10 +139,21 @@ class Order(db.Model):
     payment_method = db.Column(db.String(50), nullable=True)
     payment_transaction_id = db.Column(db.String(100), nullable=True)
     
-    # Relationship to products through the association table
-    products = db.relationship('Product', secondary=order_items, lazy='subquery',
-                               backref=db.backref('orders', lazy=True))
+    # We'll define the relationships after all models are defined
 
+
+# Association table for many-to-many relationship between orders and products
+order_items = db.Table('order_items',
+    db.Column('order_id', db.Integer, db.ForeignKey('orders.id'), primary_key=True),
+    db.Column('product_id', db.Integer, db.ForeignKey('products.id'), primary_key=True),
+    db.Column('quantity', db.Integer, nullable=False, default=1),
+    db.Column('shop_id', db.Integer, db.ForeignKey('shops.id'), nullable=False) # To associate order item with shop
+)
+
+# Now define the relationships
+Shop.orders = db.relationship('Order', secondary=order_items, overlaps="products,orders")
+Product.orders = db.relationship('Order', secondary=order_items, back_populates='products', overlaps="orders")
+Order.products = db.relationship('Product', secondary=order_items, back_populates='orders', overlaps="orders")
 
 # --- Helper Decorators for Role-Based Access ---
 def admin_required(fn):
@@ -868,7 +872,16 @@ def place_order():
             shop_id=product.shop_id # Store shop_id with the item
         )
         db.session.execute(stmt)
-        total_order_amount += product.price * quantity
+        
+        # Reduce product quantity immediately when order is placed
+        product.quantity -= quantity
+        
+        # Calculate price (considering any discounts)
+        item_price = product.price
+        if hasattr(product, 'discount_percentage') and product.discount_percentage > 0:
+            item_price = item_price * (1 - (product.discount_percentage / 100))
+            
+        total_order_amount += item_price * quantity
     
     # Add COD fee if applicable
     if payment_info.get('method') == 'cod':
@@ -1055,6 +1068,63 @@ def update_order_status(order_id):
     db.session.commit()
     
     return jsonify(message=f"Order status updated to {new_status}", order_id=order_id, status=new_status), 200
+
+@app.route('/api/orders/<int:order_id>/cancel', methods=['PUT'])
+@jwt_required()
+def cancel_order(order_id):
+    try:
+        # Get the current user
+        current_user_email = get_jwt_identity()
+        current_user = User.query.filter_by(email=current_user_email).first()
+        
+        if not current_user:
+            return jsonify(message="User not found"), 404
+        
+        # Get the order
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify(message="Order not found"), 404
+        
+        # Check if user is authorized to cancel this order
+        # Customers can only cancel their own orders
+        if current_user.role == 'customer':
+            if order.customer_id != current_user.id:
+                return jsonify(message="Unauthorized to cancel this order"), 403
+        # Shop owners can cancel orders containing their products
+        elif current_user.role == 'shop_owner':
+            shop = Shop.query.filter_by(owner_id=current_user.id).first()
+            if not shop:
+                return jsonify(message="Shop not found for this owner"), 404
+                
+            # Check if this shop has any items in the order
+            order_has_shop_items = db.session.query(order_items).\
+                filter(order_items.c.order_id == order_id, order_items.c.shop_id == shop.id).first()
+            if not order_has_shop_items:
+                return jsonify(message="Order does not contain items from your shop"), 403
+        else:
+            return jsonify(message="Unauthorized to cancel orders"), 403
+        
+        # Check if order can be cancelled (not delivered or already cancelled)
+        if order.status == 'Delivered':
+            return jsonify(message="Cannot cancel a delivered order"), 400
+        
+        if order.status == 'Cancelled':
+            return jsonify(message="Order is already cancelled"), 400
+        
+        # Update the order status to Cancelled
+        order.status = 'Cancelled'
+        db.session.commit()
+        
+        return jsonify(
+            message="Order cancelled successfully",
+            order_id=order.id,
+            status=order.status
+        ), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error cancelling order: {str(e)}")
+        return jsonify(message=f"Error cancelling order: {str(e)}"), 500
 
 @app.route('/api/admin/analytics', methods=['GET'])
 @admin_required

@@ -2,6 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
+import CategorySection from '../components/CategorySection';
 
 // Re-using the city list from RegisterPage, ideally this would be in a shared constants file
 const indianCities = [
@@ -175,6 +176,9 @@ function HomePage() {
                     </div>
                 </div>
             </div>
+            
+            {/* Categories Section */}
+            <CategorySection city={selectedCity} />
             
             {/* Call to Action */}
             <div className="bg-primary text-white py-16 px-6">

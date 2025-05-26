@@ -2,27 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { calculateDiscountedPrice } from '../utils/priceUtils';
-
-// Helper function to get emoji for category
-const getCategoryEmoji = (category) => {
-  switch (category) {
-    case 'Fruits': return '🍎';
-    case 'Vegetables': return '🥦';
-    case 'Leafy Greens': return '🥬';
-    case 'Dairy': return '🥛';
-    case 'Organic': return '🌱';
-    case 'Seasonal': return '🍓';
-    case 'Bakery': return '🍞';
-    case 'Meat': return '🥩';
-    case 'Seafood': return '🐟';
-    case 'Pantry': return '🥫';
-    case 'Beverages': return '🥤';
-    case 'Snacks': return '🍿';
-    case 'Household': return '🧹';
-    case 'Personal Care': return '🧴';
-    default: return '📦';
-  }
-};
+import { getCategoryEmoji } from '../utils/categoryUtils';
 
 const ProductCard = ({ product, onAddToCart, isCustomer, formatCurrency }) => {
   const handleAddToCart = () => {
@@ -89,12 +69,22 @@ const ProductCard = ({ product, onAddToCart, isCustomer, formatCurrency }) => {
           id={`product-img-${product.id}`}
           src={product.image_url || `https://placehold.co/600x400/E2E8F0/A0AEC0?text=${product.name.charAt(0)}`} 
           alt={product.name} 
-          className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+          className={`w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110 ${product.quantity <= 0 ? 'opacity-70 grayscale' : ''}`}
           onError={(e) => { 
             e.target.onerror = null; 
             e.target.src=`https://placehold.co/600x400/E2E8F0/A0AEC0?text=${product.name.charAt(0)}`; 
           }}
         />
+        
+        {/* Out of stock overlay */}
+        {product.quantity <= 0 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg transform rotate-45 shadow-lg">
+              OUT OF STOCK
+            </div>
+          </div>
+        )}
+        
         <div className="absolute top-2 right-2 flex flex-col items-end">
           {product.discount_percentage > 0 ? (
             <>

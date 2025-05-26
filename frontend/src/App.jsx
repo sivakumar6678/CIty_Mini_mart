@@ -31,6 +31,7 @@ import { getMe } from './services/api';
 
 // Styles
 import './App.css';
+import './styles/custom.css';
 
 // Create AuthContext
 export const AuthContext = createContext(null);

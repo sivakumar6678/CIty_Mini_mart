@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../App';
 import { addProduct, getMyShop } from '../services/api';
 import { motion } from 'framer-motion';
+import { PRODUCT_CATEGORIES } from '../utils/categoryUtils';
 
 function AddProductPage() {
     const { auth } = useContext(AuthContext);
@@ -339,20 +340,11 @@ function AddProductPage() {
                                             onChange={(e) => setCategory(e.target.value)}
                                         >
                                             <option value="">Select a category</option>
-                                            <option value="Fruits">🍎 Fruits</option>
-                                            <option value="Vegetables">🥦 Vegetables</option>
-                                            <option value="Leafy Greens">🥬 Leafy Greens</option>
-                                            <option value="Dairy">🥛 Dairy</option>
-                                            <option value="Organic">🌱 Organic</option>
-                                            <option value="Seasonal">🍓 Seasonal</option>
-                                            <option value="Bakery">🍞 Bakery</option>
-                                            <option value="Meat">🥩 Meat</option>
-                                            <option value="Seafood">🐟 Seafood</option>
-                                            <option value="Pantry">🥫 Pantry</option>
-                                            <option value="Beverages">🥤 Beverages</option>
-                                            <option value="Snacks">🍿 Snacks</option>
-                                            <option value="Household">🧹 Household</option>
-                                            <option value="Personal Care">🧴 Personal Care</option>
+                                            {PRODUCT_CATEGORIES.map(cat => (
+                                                <option key={cat.id} value={cat.name}>
+                                                    {cat.icon} {cat.name}
+                                                </option>
+                                            ))}
                                             <option value="Other">📦 Other</option>
                                         </select>
                                     </div>

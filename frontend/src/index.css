@@ -194,6 +194,17 @@ input:focus, select:focus, textarea:focus {
 
 /* Custom utility classes can be added here if needed */
 
+/* Highlight animation for orders */
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+  70% { box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+
+.highlight-pulse {
+  animation: pulse-border 2s infinite;
+}
+
 /* Responsive utilities */
 @media (max-width: 768px) {
   :root {
