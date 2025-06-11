@@ -200,7 +200,7 @@ function CartPage() {
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.5 }}
                 >
-                    Your Shopping Cart
+                    Your Shopping Cart done
                 </motion.h1>
                 <motion.div
                     initial={{ x: 20, opacity: 0 }}
